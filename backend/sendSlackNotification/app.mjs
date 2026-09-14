@@ -4,7 +4,7 @@ import { RDSClient, DescribeDBInstancesCommand, DescribeDBSnapshotsCommand, Desc
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { buildResponse, getAwsClient, isValidSlackWebhookUrl } from "../utils.mjs";
+import { buildResponse, getAwsClient, isValidSlackWebhookUrl, isValidEmail } from "../utils.mjs";
 
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
@@ -820,16 +820,17 @@ export const handler = async (event) => {
     toAddresses = channelEmail
       .split(/[,;\s]+/)
       .map(e => e.trim())
-      .filter(e => e.length > 0);
+      .filter(e => e.length > 0 && isValidEmail(e));
 
     if (toAddresses.length === 0) {
-      return buildResponse(200, {
-        message: "Scheduled run completed. Webhooks sent.",
+      console.warn("No valid email addresses found in channelEmail:", channelEmail);
+      return buildResponse(400, {
+        message: "유효한 이메일 수신 주소가 없습니다. RFC 5322 규격에 맞는 이메일 주소를 입력해주세요.",
         timestamp: now.toISOString()
       });
     }
 
-    if (!senderEmail) {
+    if (!senderEmail || !isValidEmail(senderEmail)) {
       senderEmail = toAddresses[0];
     }
 

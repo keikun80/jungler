@@ -2,25 +2,34 @@
 # Usage: .\scripts\deploy-all.ps1 [-Profile <PROFILE_NAME>] [-Region <REGION>]
 
 param(
-    [string]$Profile = "hub-profile",
-    [string]$Region = "ap-northeast-2"
+    [string]$Profile = "",
+    [string]$Region = "",
+    [string]$StackName = ""
 )
 
 # Load environment configuration
 $envFile = "../env.json"
 if (Test-Path $envFile) {
     $envConfig = Get-Content $envFile -Raw | ConvertFrom-Json
-    $Profile = $envConfig.HUB_PROFILE
-    $Region = $envConfig.REGION
+    if (-not $Profile -and $envConfig.HUB_PROFILE) { $Profile = $envConfig.HUB_PROFILE }
+    if (-not $Region -and $envConfig.REGION) { $Region = $envConfig.REGION }
+    if (-not $StackName -and $envConfig.STACK_NAME) { $StackName = $envConfig.STACK_NAME }
     Write-Host "Loaded configuration from $envFile" -ForegroundColor Yellow
-    Write-Host "  Profile: $($envConfig.HUB_PROFILE)" -ForegroundColor Yellow
-    Write-Host "  Region: $($envConfig.REGION)" -ForegroundColor Yellow
-} else {
-    Write-Host "No env.json found. Using default values." -ForegroundColor Yellow
 }
+
+$gitBranch = (git rev-parse --abbrev-ref HEAD 2>$null)
+$defaultStack = "jungle-tools-stack"
+if ($gitBranch -eq "develop") {
+    $defaultStack = "dev-jungle"
+}
+
+if (-not $Profile) { $Profile = "hub-profile" }
+if (-not $Region) { $Region = "ap-northeast-2" }
+if (-not $StackName) { $StackName = $defaultStack }
 
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "Jungle Tools Console Deployment" -ForegroundColor Cyan
+Write-Host "Stack Name: $StackName" -ForegroundColor Cyan
 Write-Host "Profile: $Profile" -ForegroundColor Cyan
 Write-Host "Region: $Region" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
@@ -73,12 +82,13 @@ $scanTargetAccountsJson = $targetAccList | ConvertTo-Json -Compress
 Write-Host "Running: sam deploy with ScanTargetAccountsJson" -ForegroundColor Gray
 sam deploy `
     --template-file .aws-sam/build/template.yaml `
-    --stack-name jungle-tools-stack `
+    --stack-name $StackName `
     --resolve-s3 `
     --capabilities CAPABILITY_NAMED_IAM `
     --region $Region `
     --profile $Profile `
     --parameter-overrides "ScanTargetAccountsJson='$scanTargetAccountsJson'" `
+    --no-fail-on-empty-changeset `
     --no-confirm-changeset
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Failed to deploy SAM application." -ForegroundColor Red
@@ -88,7 +98,7 @@ if ($LASTEXITCODE -ne 0) {
 # Step 4: Get S3 bucket name and sync frontend
 Write-Host "`n[Step 4] Syncing frontend to S3..." -ForegroundColor Yellow
 $stackOutputs = aws cloudformation describe-stacks `
-    --stack-name jungle-tools-stack `
+    --stack-name $StackName `
     --query "Stacks[0].Outputs[?OutputKey=='FrontendWebsiteUrl'].OutputValue" `
     --output text `
     --profile $Profile `
@@ -96,7 +106,7 @@ $stackOutputs = aws cloudformation describe-stacks `
     --no-paginate
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to get stack outputs." -ForegroundColor Red
+    Write-Host "Failed to get stack outputs from $StackName." -ForegroundColor Red
     exit 1
 }
 
@@ -120,8 +130,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "`n============================================================" -ForegroundColor Green
 Write-Host "Deployment Completed Successfully!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
-Write-Host "`nCloudFormation Stack: jungle-tools-stack" -ForegroundColor White
-Write-Host "API Endpoint: " -NoNewline; Write-Host ($stackOutputs -replace 'website', 'execute-api') -ForegroundColor Cyan
+Write-Host "`nCloudFormation Stack: $StackName" -ForegroundColor White
 Write-Host "Frontend URL: $stackOutputs" -ForegroundColor Cyan
 Write-Host "`nNext Steps:" -ForegroundColor Yellow
 Write-Host "  1. Open the Frontend URL in your browser" -ForegroundColor White

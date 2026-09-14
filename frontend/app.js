@@ -8,6 +8,20 @@ let credentials = null; // { accessKeyId, secretAccessKey, sessionToken, region 
 let isSessionExpired = false;
 let currentWebhooksList = [];
 
+// RFC 5322 Email Validation Helpers
+function isValidEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  return emailRegex.test(email.trim());
+}
+
+function areAllValidEmails(emailString) {
+  if (!emailString || typeof emailString !== 'string') return false;
+  const list = emailString.split(/[,;\s]+/).map(e => e.trim()).filter(e => e.length > 0);
+  if (list.length === 0) return false;
+  return list.every(email => isValidEmail(email));
+}
+
 // DOM Elements
 const apiInput = document.getElementById('api-endpoint-input');
 const authApiInput = document.getElementById('auth-api-endpoint');
@@ -322,6 +336,10 @@ function setupEventListeners() {
   }
   if (btnTestSlack) {
     btnTestSlack.addEventListener('click', sendTestSlackNotification);
+  }
+  const slackEnabledToggle = document.getElementById('slack-enabled-toggle');
+  if (slackEnabledToggle) {
+    slackEnabledToggle.addEventListener('change', toggleSlackEmailEnabled);
   }
 
 
@@ -2179,6 +2197,50 @@ async function sendTestAllWebhooks() {
   }
 }
 
+// Toggle Slack Email Monitoring Enabled Status
+async function toggleSlackEmailEnabled() {
+  if (!validateEndpoint() || !validateAuth()) return;
+
+  const enabledToggle = document.getElementById('slack-enabled-toggle');
+  const channelEmailInput = document.getElementById('slack-channel-email');
+  const isEnabled = enabledToggle ? enabledToggle.checked : false;
+  const channelEmail = channelEmailInput ? channelEmailInput.value.trim() : '';
+
+  if (isEnabled && !channelEmail) {
+    showToast('Slack 채널 이메일 주소를 먼저 입력해주세요.', 'warning');
+    if (enabledToggle) enabledToggle.checked = false;
+    return;
+  }
+
+  if (isEnabled && !areAllValidEmails(channelEmail)) {
+    showToast('유효하지 않은 이메일 형식입니다. RFC 5322 형식의 이메일 주소를 입력해주세요.', 'warning');
+    if (enabledToggle) enabledToggle.checked = false;
+    return;
+  }
+
+  try {
+    const res = await signedFetch(`${apiEndpoint}/slack/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: isEnabled })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || 'Slack 알림 상태 저장에 실패했습니다.');
+    }
+
+    showToast(
+      isEnabled ? '자동 모니터링 알림이 활성화되었습니다.' : '자동 모니터링 알림이 비활성화되었습니다.',
+      'success'
+    );
+  } catch (error) {
+    console.error('Failed to toggle Slack Email enabled status:', error);
+    showToast(`알림 상태 변경 실패: ${error.message}`, 'danger');
+    if (enabledToggle) enabledToggle.checked = !isEnabled;
+  }
+}
+
 // Save Slack Email Configuration
 async function saveSlackEmailConfig() {
   if (!validateEndpoint() || !validateAuth()) return;
@@ -2198,6 +2260,16 @@ async function saveSlackEmailConfig() {
 
   if (!channelEmail) {
     showToast('Slack 채널 이메일 주소를 입력해주세요.', 'warning');
+    return;
+  }
+
+  if (!areAllValidEmails(channelEmail)) {
+    showToast('Slack 채널 이메일 주소 형식이 올바르지 않습니다. (예: channel@workspace.slack.com)', 'warning');
+    return;
+  }
+
+  if (senderEmail && !isValidEmail(senderEmail)) {
+    showToast('발신자 이메일 주소 형식이 올바르지 않습니다.', 'warning');
     return;
   }
 
@@ -2247,6 +2319,16 @@ async function sendTestSlackNotification() {
 
   if (!channelEmail) {
     showToast('Slack 채널 이메일 주소를 입력한 후 테스트를 진행해주세요.', 'warning');
+    return;
+  }
+
+  if (!areAllValidEmails(channelEmail)) {
+    showToast('Slack 채널 이메일 주소 형식이 올바르지 않습니다.', 'warning');
+    return;
+  }
+
+  if (senderEmail && !isValidEmail(senderEmail)) {
+    showToast('발신자 이메일 주소 형식이 올바르지 않습니다.', 'warning');
     return;
   }
 
@@ -2326,6 +2408,11 @@ function saveSmtpConfig() {
     return;
   }
 
+  if (!isValidEmail(fromEmail)) {
+    showToast('유효하지 않은 발신자 이메일 주소 형식입니다. (RFC 5322 규격 확인)', 'warning');
+    return;
+  }
+
   const config = { host, port, encryption, username, password, fromEmail, fromName, updatedAt: new Date().toISOString() };
   localStorage.setItem('backup_smtp_config', JSON.stringify(config));
   showToast('SMTP 서버 설정이 저장되었습니다.', 'success');
@@ -2338,6 +2425,11 @@ function testSmtpConnection() {
 
   if (!host || !port || !fromEmail) {
     showToast('SMTP 호스트와 포트, 발신자 주소를 먼저 입력하세요.', 'warning');
+    return;
+  }
+
+  if (!isValidEmail(fromEmail)) {
+    showToast('올바른 발신자 이메일 주소 형식을 입력해주세요.', 'warning');
     return;
   }
 
@@ -2519,6 +2611,11 @@ function saveRecipientModalSubmit() {
 
   if (!name || !email) {
     showToast('이름과 이메일 주소는 필수 입력 항목입니다.', 'warning');
+    return;
+  }
+
+  if (!isValidEmail(email)) {
+    showToast('유효하지 않은 이메일 주소 형식입니다. RFC 5322 규격을 확인해주세요.', 'warning');
     return;
   }
 

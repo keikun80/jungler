@@ -1,6 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
-import { buildResponse, isValidSlackWebhookUrl } from "../utils.mjs";
+import { buildResponse, isValidSlackWebhookUrl, isValidEmail, areAllValidEmails } from "../utils.mjs";
 
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
@@ -33,6 +33,23 @@ export const handler = async (event) => {
             });
           }
         }
+      }
+    }
+
+    // Security Validation: Validate email format using RFC 5322 regex
+    if (body.channelEmail !== undefined && typeof body.channelEmail === "string" && body.channelEmail.trim().length > 0) {
+      if (!areAllValidEmails(body.channelEmail)) {
+        return buildResponse(400, {
+          message: "유효하지 않은 Slack 채널 이메일 주소 형식입니다. RFC 5322 규격에 맞는 올바른 이메일 형식을 입력해주세요."
+        });
+      }
+    }
+
+    if (body.senderEmail !== undefined && typeof body.senderEmail === "string" && body.senderEmail.trim().length > 0) {
+      if (!isValidEmail(body.senderEmail)) {
+        return buildResponse(400, {
+          message: "유효하지 않은 발신자 이메일 주소 형식입니다. RFC 5322 규격에 맞는 올바른 이메일 형식을 입력해주세요."
+        });
       }
     }
 

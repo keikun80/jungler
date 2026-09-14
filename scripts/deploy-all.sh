@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: ./scripts/deploy-all.sh [HUB_PROFILE] [REGION]
+# Usage: ./scripts/deploy-all.sh [HUB_PROFILE] [REGION] [STACK_NAME]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -19,8 +19,15 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+DEFAULT_STACK="jungle-tools-stack"
+if [ "$GIT_BRANCH" = "develop" ]; then
+    DEFAULT_STACK="dev-jungle"
+fi
+
 HUB_PROFILE=${1:-$(node -e "console.log(require('$ENV_FILE').HUB_PROFILE || '')")}
 REGION=${2:-$(node -e "console.log(require('$ENV_FILE').REGION || 'ap-northeast-2')")}
+STACK_NAME=${3:-$(node -e "console.log(require('$ENV_FILE').STACK_NAME || '$DEFAULT_STACK')")}
 
 if [ -z "$HUB_PROFILE" ]; then
     echo -e "${RED}Error: HUB_PROFILE could not be determined. Pass it as \$1 or set HUB_PROFILE in env.json.${NC}"
@@ -29,6 +36,7 @@ fi
 
 echo -e "${CYAN}============================================================${NC}"
 echo -e "${CYAN}Jungle Tools Console Deployment${NC}"
+echo -e "${CYAN}Stack Name: ${STACK_NAME}${NC}"
 echo -e "${CYAN}Profile: ${HUB_PROFILE}${NC}"
 echo -e "${CYAN}Region: ${REGION}${NC}"
 echo -e "${CYAN}============================================================${NC}"
@@ -81,12 +89,13 @@ SCAN_TARGET_ACCOUNTS_JSON=$(node -e "
 echo -e "${CYAN}Running: sam deploy with ScanTargetAccountsJson...${NC}"
 sam deploy \
     --template-file "$ROOT_DIR/.aws-sam/build/template.yaml" \
-    --stack-name jungle-tools-stack \
+    --stack-name "$STACK_NAME" \
     --resolve-s3 \
     --capabilities CAPABILITY_NAMED_IAM \
     --region "$REGION" \
     --profile "$HUB_PROFILE" \
     --parameter-overrides "ScanTargetAccountsJson='$SCAN_TARGET_ACCOUNTS_JSON'" \
+    --no-fail-on-empty-changeset \
     --no-confirm-changeset
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to deploy SAM application.${NC}"
@@ -96,14 +105,14 @@ fi
 # Step 4: Get S3 bucket name and sync frontend
 echo -e "\n${YELLOW}[Step 4] Syncing frontend to S3...${NC}"
 stack_outputs=$(aws cloudformation describe-stacks \
-    --stack-name jungle-tools-stack \
+    --stack-name "$STACK_NAME" \
     --query "Stacks[0].Outputs" \
     --output json \
     --profile "$HUB_PROFILE" \
     --region "$REGION" 2>/dev/null)
 
 if [ $? -ne 0 ] || [ -z "$stack_outputs" ]; then
-    echo -e "${RED}Failed to get stack outputs from jungle-tools-stack.${NC}"
+    echo -e "${RED}Failed to get stack outputs from $STACK_NAME.${NC}"
     exit 1
 fi
 
@@ -148,7 +157,7 @@ fi
 echo -e "\n${CYAN}============================================================${NC}"
 echo -e "${GREEN}Deployment Completed Successfully!${NC}"
 echo -e "${CYAN}============================================================${NC}"
-echo -e "${WHITE}CloudFormation Stack: jungle-tools-stack${NC}"
+echo -e "${WHITE}CloudFormation Stack: ${CYAN}$STACK_NAME${NC}"
 echo -e "${WHITE}API Endpoint: ${CYAN}$api_endpoint${NC}"
 echo -e "${WHITE}Frontend URL: ${CYAN}$website_url${NC}"
 echo -e "\n${YELLOW}Next Steps:${NC}"

@@ -8,6 +8,9 @@ Parameters:
     Default: '[]'
     Description: 'JSON string of target accounts to scan for backup reports'
 
+Conditions:
+  IsDefaultStack: !Equals [!Ref "AWS::StackName", "jungle-tools-stack"]
+
 Globals:
   Function:
     Timeout: 30
@@ -25,7 +28,7 @@ Resources:
   SlackConfigTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: SlackConfig
+      TableName: !If [IsDefaultStack, "SlackConfig", !Sub "${AWS::StackName}-SlackConfig"]
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -40,7 +43,7 @@ Resources:
   SgAuditLogsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: SgAuditLogs
+      TableName: !If [IsDefaultStack, "SgAuditLogs", !Sub "${AWS::StackName}-SgAuditLogs"]
       AttributeDefinitions:
         - AttributeName: sgId
           AttributeType: S
@@ -417,7 +420,7 @@ Resources:
   JungleToolsApiInvokeRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: JungleToolsApiInvokeRole
+      RoleName: !If [IsDefaultStack, "JungleToolsApiInvokeRole", !Sub "${AWS::StackName}-ApiInvokeRole"]
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:

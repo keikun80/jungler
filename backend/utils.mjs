@@ -69,6 +69,22 @@ export function isValidSlackWebhookUrl(url) {
   }
 }
 
+export function isValidEmail(email) {
+  if (!email || typeof email !== "string") return false;
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  return emailRegex.test(email.trim());
+}
+
+export function areAllValidEmails(emailString) {
+  if (!emailString || typeof emailString !== "string") return false;
+  const list = emailString
+    .split(/[,;\s]+/)
+    .map((e) => e.trim())
+    .filter((e) => e.length > 0);
+  if (list.length === 0) return false;
+  return list.every((email) => isValidEmail(email));
+}
+
 export function buildResponse(statusCode, body) {
   return {
     statusCode: statusCode,
