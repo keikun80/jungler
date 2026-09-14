@@ -1509,11 +1509,14 @@ function renderAuditLogsTable(logs) {
 
     const formattedDate = new Date(log.timestamp).toLocaleString();
 
+    const statusClass = log.status === 'SUCCESS' ? 'badge-success' : 'badge-failure';
+    const statusBadge = `<span class="badge ${statusClass}">${log.status || 'UNKNOWN'}</span>`;
+
     tr.innerHTML = `
       <td class="code-text" style="background: none; border: none; font-size: 0.8rem;">${formattedDate}</td>
       <td class="code-text" style="background: none; border: none; color: var(--accent-cyan); font-size: 0.8rem;">${log.sgId}</td>
       <td>${actionBadge}</td>
-      <td><span class="badge badge-success">${log.status}</span></td>
+      <td>${statusBadge}</td>
       <td>
         <span class="btn-link btn-view-log-details" style="font-size: 0.82rem;">View Details</span>
       </td>

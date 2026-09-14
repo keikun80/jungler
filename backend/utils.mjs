@@ -97,4 +97,25 @@ export function buildResponse(statusCode, body) {
     body: JSON.stringify(body)
   };
 }
-
+export async function recordAuditLog(docClient, tableName, { sgId, action, details, status = "SUCCESS" }) {
+  if (!docClient || !tableName) return;
+  try {
+    const { PutCommand } = await import("@aws-sdk/lib-dynamodb");
+    const timestamp = new Date().toISOString();
+    const detailsStr = typeof details === "object" ? JSON.stringify(details) : (details || "");
+    await docClient.send(
+      new PutCommand({
+        TableName: tableName,
+        Item: {
+          sgId: sgId || "UNKNOWN",
+          timestamp,
+          action,
+          status,
+          details: detailsStr
+        }
+      })
+    );
+  } catch (err) {
+    console.error(`Failed to record audit log [${action}] (${status}):`, err.message);
+  }
+}

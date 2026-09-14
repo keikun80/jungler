@@ -6,8 +6,8 @@ import {
   RevokeSecurityGroupEgressCommand
 } from "@aws-sdk/client-ec2";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { buildResponse, getEc2Client } from "../utils.mjs";
+import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import { buildResponse, getEc2Client, recordAuditLog } from "../utils.mjs";
 
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
@@ -15,9 +15,9 @@ const docClient = DynamoDBDocumentClient.from(ddbClient);
 const AUDIT_LOG_TABLE = process.env.AUDIT_LOG_TABLE || "SgAuditLogs";
 
 export const handler = async (event) => {
+  const sgId = event.pathParameters?.id;
   try {
     const ec2Client = await getEc2Client(event);
-    const sgId = event.pathParameters?.id;
     if (!sgId) {
       return buildResponse(400, { message: "Security Group ID (id) path parameter is missing" });
     }
@@ -27,66 +27,83 @@ export const handler = async (event) => {
     }
 
     const { inboundRules, outboundRules } = JSON.parse(event.body);
-
     if (!Array.isArray(inboundRules) || !Array.isArray(outboundRules)) {
       return buildResponse(400, { message: "inboundRules and outboundRules must be arrays" });
     }
 
-    // 1. Get current rules of the Security Group
-    const sgData = await ec2Client.send(new DescribeSecurityGroupsCommand({ GroupIds: [sgId] }));
-    if (!sgData.SecurityGroups || sgData.SecurityGroups.length === 0) {
-      return buildResponse(404, { message: `Security Group ${sgId} not found` });
+    // 0. Fetch existing rules to enable full replacement & rollback
+    const descResult = await ec2Client.send(new DescribeSecurityGroupsCommand({
+      GroupIds: [sgId]
+    }));
+    const sg = descResult.SecurityGroups?.[0];
+    if (!sg) {
+      return buildResponse(404, { message: `Security Group ${sgId} not found.` });
     }
-    const currentSg = sgData.SecurityGroups[0];
-    const oldInbound = currentSg.IpPermissions || [];
-    const oldOutbound = currentSg.IpPermissionsEgress || [];
+    const oldInbound = sg.IpPermissions || [];
+    const oldOutbound = sg.IpPermissionsEgress || [];
 
-    // Helper to format & validate rule parameters from frontend to AWS SDK structures
-    const mapRules = (rules, ruleTypeName = "rule") => {
+    // 1. Map frontend rule structure to AWS EC2 IpPermission objects with strict validation
+    const mapRules = (rules, ruleTypeName) => {
       return rules.map((r, idx) => {
-        const proto = (r.ipProtocol || "-1").toLowerCase();
-        const isAll = proto === "-1" || proto === "all";
-        const isTcpUdp = proto === "tcp" || proto === "udp";
-        const isIcmp = proto === "icmp" || proto === "icmpv6";
-
-        let fromPort = -1;
-        let toPort = -1;
-
-        if (isAll) {
-          fromPort = -1;
-          toPort = -1;
-        } else if (isTcpUdp) {
-          const fp = r.fromPort !== null && r.fromPort !== undefined && r.fromPort !== "" ? Number(r.fromPort) : null;
-          const tp = r.toPort !== null && r.toPort !== undefined && r.toPort !== "" ? Number(r.toPort) : null;
-
-          if (fp === null && tp === null) {
-            throw new Error(`${ruleTypeName} #${idx + 1}: ${proto.toUpperCase()} 프로토콜에는 포트 번호를 입력해야 합니다.`);
-          }
-          fromPort = fp !== null ? fp : tp;
-          toPort = tp !== null ? tp : fp;
-
-          if (isNaN(fromPort) || fromPort < 0 || fromPort > 65535 || isNaN(toPort) || toPort < 0 || toPort > 65535) {
-            throw new Error(`${ruleTypeName} #${idx + 1}: 유효하지 않은 포트 범위입니다 (${fromPort} - ${toPort}). 0 ~ 65535 사이여야 합니다.`);
-          }
-          if (fromPort > toPort) {
-            throw new Error(`${ruleTypeName} #${idx + 1}: 시작 포트(${fromPort})는 종료 포트(${toPort})보다 작거나 같아야 합니다.`);
-          }
-        } else if (isIcmp) {
-          fromPort = r.fromPort !== null && r.fromPort !== undefined && r.fromPort !== "" ? Number(r.fromPort) : -1;
-          toPort = r.toPort !== null && r.toPort !== undefined && r.toPort !== "" ? Number(r.toPort) : -1;
-        }
+        const ruleNum = idx + 1;
+        const rawProtocol = (r.ipProtocol || "tcp").toLowerCase().trim();
+        const fromP = Number(r.fromPort);
+        const toP = Number(r.toPort);
 
         const ipPerm = {
-          IpProtocol: isAll ? "-1" : proto,
-          FromPort: fromPort,
-          ToPort: toPort
+          IpProtocol: rawProtocol
         };
+
+        if (rawProtocol === "-1" || rawProtocol === "all") {
+          ipPerm.IpProtocol = "-1";
+        } else if (rawProtocol === "tcp" || rawProtocol === "udp") {
+          if (isNaN(fromP) || fromP < 0 || fromP > 65535) {
+            throw new Error(`${ruleTypeName} #${ruleNum}: 시작 포트(From Port)는 0~65535 사이의 유효한 정수여야 합니다. (입력값: ${r.fromPort})`);
+          }
+          if (isNaN(toP) || toP < 0 || toP > 65535) {
+            throw new Error(`${ruleTypeName} #${ruleNum}: 종료 포트(To Port)는 0~65535 사이의 유효한 정수여야 합니다. (입력값: ${r.toPort})`);
+          }
+          if (fromP > toP) {
+            throw new Error(`${ruleTypeName} #${ruleNum}: 시작 포트(${fromP})는 종료 포트(${toP})보다 클 수 없습니다.`);
+          }
+          ipPerm.FromPort = fromP;
+          ipPerm.ToPort = toP;
+        } else if (rawProtocol === "icmp") {
+          ipPerm.FromPort = !isNaN(fromP) ? fromP : -1;
+          ipPerm.ToPort = !isNaN(toP) ? toP : -1;
+        } else {
+          ipPerm.IpProtocol = rawProtocol;
+          if (!isNaN(fromP) && !isNaN(toP)) {
+            ipPerm.FromPort = fromP;
+            ipPerm.ToPort = toP;
+          }
+        }
 
         if (r.ipRanges && Array.isArray(r.ipRanges) && r.ipRanges.length > 0) {
           const validRanges = r.ipRanges.filter(ip => ip && typeof ip.cidrIp === "string" && ip.cidrIp.trim().length > 0);
           if (validRanges.length > 0) {
             ipPerm.IpRanges = validRanges.map((ip) => ({
               CidrIp: ip.cidrIp.trim(),
+              Description: ip.description || ""
+            }));
+          }
+        }
+
+        if (r.ipv6Ranges && Array.isArray(r.ipv6Ranges) && r.ipv6Ranges.length > 0) {
+          const validIpv6 = r.ipv6Ranges.filter(ip => ip && typeof ip.cidrIpv6 === "string" && ip.cidrIpv6.trim().length > 0);
+          if (validIpv6.length > 0) {
+            ipPerm.Ipv6Ranges = validIpv6.map((ip) => ({
+              CidrIpv6: ip.cidrIpv6.trim(),
+              Description: ip.description || ""
+            }));
+          }
+        }
+
+        if (r.prefixListIds && Array.isArray(r.prefixListIds) && r.prefixListIds.length > 0) {
+          const validPrefixes = r.prefixListIds.filter(ip => ip && typeof ip.prefixListId === "string" && ip.prefixListId.trim().length > 0);
+          if (validPrefixes.length > 0) {
+            ipPerm.PrefixListIds = validPrefixes.map((ip) => ({
+              PrefixListId: ip.prefixListId.trim(),
               Description: ip.description || ""
             }));
           }
@@ -102,7 +119,7 @@ export const handler = async (event) => {
           }
         }
 
-        if (!ipPerm.IpRanges && !ipPerm.UserIdGroupPairs) {
+        if (!ipPerm.IpRanges && !ipPerm.Ipv6Ranges && !ipPerm.PrefixListIds && !ipPerm.UserIdGroupPairs) {
           ipPerm.IpRanges = [{ CidrIp: "0.0.0.0/0", Description: r.description || "" }];
         }
 
@@ -188,30 +205,33 @@ export const handler = async (event) => {
       } catch (rollbackErr) {
         console.error("Critical: Rollback also failed:", rollbackErr);
       }
+
+      // Log FAILED status with rollback details to DynamoDB
+      await recordAuditLog(docClient, AUDIT_LOG_TABLE, {
+        sgId,
+        action: "UPDATE_RULES",
+        details: {
+          error: applyErr.message,
+          rollback: "RESTORED_TO_PREVIOUS_RULES",
+          before: { inbound: oldInbound, outbound: oldOutbound },
+          attempted: { inbound: newInbound, outbound: newOutbound }
+        },
+        status: "FAILED"
+      });
+
       return buildResponse(500, { message: `보안 그룹 규칙 적용 실패 (기존 규칙으로 복구됨): ${applyErr.message}`, error: applyErr.message });
     }
 
-    // 5. Log changes to DynamoDB
-    const timestamp = new Date().toISOString();
-    const logItem = {
-      sgId: sgId,
-      timestamp: timestamp,
+    // 5. Log SUCCESS changes to DynamoDB
+    await recordAuditLog(docClient, AUDIT_LOG_TABLE, {
+      sgId,
       action: "UPDATE_RULES",
-      details: JSON.stringify({
+      details: {
         before: { inbound: oldInbound, outbound: oldOutbound },
         after: { inbound: newInbound, outbound: newOutbound }
-      }),
+      },
       status: "SUCCESS"
-    };
-
-    try {
-      await docClient.send(new PutCommand({
-        TableName: AUDIT_LOG_TABLE,
-        Item: logItem
-      }));
-    } catch (logErr) {
-      console.warn("Failed to write audit log to DynamoDB:", logErr.message);
-    }
+    });
 
     return buildResponse(200, {
       message: "Security Group rules updated successfully",
@@ -222,6 +242,15 @@ export const handler = async (event) => {
 
   } catch (error) {
     console.error("Error updating security group rules:", error);
+
+    // Log general failure
+    await recordAuditLog(docClient, AUDIT_LOG_TABLE, {
+      sgId: sgId || "UNKNOWN",
+      action: "UPDATE_RULES",
+      details: { error: error.message },
+      status: "FAILED"
+    });
+
     return buildResponse(500, { message: "Failed to update security group rules", error: error.message });
   }
 };
