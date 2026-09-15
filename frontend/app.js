@@ -694,51 +694,61 @@ function switchView(viewName) {
 
   const parentBreadcrumb = document.getElementById('breadcrumb-parent');
   const activeBreadcrumb = document.getElementById('breadcrumb-active');
+  const separatorBreadcrumb = document.getElementById('breadcrumb-separator') || document.querySelector('.breadcrumb .separator');
 
   if (viewName === 'home') {
     if (navHome) navHome.classList.add('active');
     if (viewHome) viewHome.classList.add('active');
-    parentBreadcrumb.textContent = 'Jungle Tools';
-    activeBreadcrumb.textContent = 'Home';
-  } else if (viewName === 'sg-dashboard' || viewName === 'dashboard') {
-    if (navSgDashboard) navSgDashboard.classList.add('active');
-    if (viewSgDashboard) viewSgDashboard.classList.add('active');
-    parentBreadcrumb.textContent = 'SG Manage';
-    activeBreadcrumb.textContent = 'Dashboard';
-  } else if (viewName === 'sg-logs' || viewName === 'logs') {
-    if (navSgLogs) navSgLogs.classList.add('active');
-    if (viewSgLogs) viewSgLogs.classList.add('active');
-    parentBreadcrumb.textContent = 'SG Manage';
-    activeBreadcrumb.textContent = 'Logs';
-  } else if (viewName === 'backup-dashboard' || viewName === 'backups') {
-    if (navBackupDashboard) navBackupDashboard.classList.add('active');
-    if (viewBackupDashboard) viewBackupDashboard.classList.add('active');
-    parentBreadcrumb.textContent = 'Backup Monitor';
-    activeBreadcrumb.textContent = 'Dashboard';
-  } else if (viewName === 'noti-slack-webhook' || viewName === 'slack-webhook') {
-    if (navNotiSlackWebhook) navNotiSlackWebhook.classList.add('active');
-    if (viewNotiSlackWebhook) viewNotiSlackWebhook.classList.add('active');
-    parentBreadcrumb.textContent = 'Backup Monitor / Notification / Slack';
-    activeBreadcrumb.textContent = '웹훅';
-  } else if (viewName === 'noti-slack-email' || viewName === 'slack-email') {
-    if (navNotiSlackEmail) navNotiSlackEmail.classList.add('active');
-    if (viewNotiSlackEmail) viewNotiSlackEmail.classList.add('active');
-    parentBreadcrumb.textContent = 'Backup Monitor / Notification / Slack';
-    activeBreadcrumb.textContent = 'Email';
-  } else if (viewName === 'noti-email-smtp') {
-    if (navNotiEmailSmtp) navNotiEmailSmtp.classList.add('active');
-    if (viewNotiEmailSmtp) viewNotiEmailSmtp.classList.add('active');
-    parentBreadcrumb.textContent = 'Backup Monitor / Notification / Email';
-    activeBreadcrumb.textContent = 'SMTP';
-  } else if (viewName === 'noti-email-recipients') {
-    if (navNotiEmailRecipients) navNotiEmailRecipients.classList.add('active');
-    if (viewNotiEmailRecipients) viewNotiEmailRecipients.classList.add('active');
-    parentBreadcrumb.textContent = 'Backup Monitor / Notification / Email';
-    activeBreadcrumb.textContent = '주소 등록';
-  } else if (viewName === 'detail') {
-    if (viewSgDetail) viewSgDetail.classList.add('active');
-    parentBreadcrumb.textContent = 'SG Manage';
-    activeBreadcrumb.textContent = selectedSg ? selectedSg.groupName : 'Details';
+    if (parentBreadcrumb) {
+      parentBreadcrumb.textContent = '';
+      parentBreadcrumb.style.display = 'none';
+    }
+    if (separatorBreadcrumb) separatorBreadcrumb.style.display = 'none';
+    if (activeBreadcrumb) activeBreadcrumb.textContent = 'Home';
+  } else {
+    if (parentBreadcrumb) parentBreadcrumb.style.display = 'inline';
+    if (separatorBreadcrumb) separatorBreadcrumb.style.display = 'inline';
+
+    if (viewName === 'sg-dashboard' || viewName === 'dashboard') {
+      if (navSgDashboard) navSgDashboard.classList.add('active');
+      if (viewSgDashboard) viewSgDashboard.classList.add('active');
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'SG Manage';
+      if (activeBreadcrumb) activeBreadcrumb.textContent = 'Dashboard';
+    } else if (viewName === 'sg-logs' || viewName === 'logs') {
+      if (navSgLogs) navSgLogs.classList.add('active');
+      if (viewSgLogs) viewSgLogs.classList.add('active');
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'SG Manage';
+      if (activeBreadcrumb) activeBreadcrumb.textContent = 'Logs';
+    } else if (viewName === 'backup-dashboard' || viewName === 'backups') {
+      if (navBackupDashboard) navBackupDashboard.classList.add('active');
+      if (viewBackupDashboard) viewBackupDashboard.classList.add('active');
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor';
+      if (activeBreadcrumb) activeBreadcrumb.textContent = 'Dashboard';
+    } else if (viewName === 'noti-slack-webhook' || viewName === 'slack-webhook') {
+      if (navNotiSlackWebhook) navNotiSlackWebhook.classList.add('active');
+      if (viewNotiSlackWebhook) viewNotiSlackWebhook.classList.add('active');
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor / Notification / Slack';
+      if (activeBreadcrumb) activeBreadcrumb.textContent = '웹훅';
+    } else if (viewName === 'noti-slack-email' || viewName === 'slack-email') {
+      if (navNotiSlackEmail) navNotiSlackEmail.classList.add('active');
+      if (viewNotiSlackEmail) viewNotiSlackEmail.classList.add('active');
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor / Notification / Slack';
+      if (activeBreadcrumb) activeBreadcrumb.textContent = 'Email';
+    } else if (viewName === 'noti-email-smtp') {
+      if (navNotiEmailSmtp) navNotiEmailSmtp.classList.add('active');
+      if (viewNotiEmailSmtp) viewNotiEmailSmtp.classList.add('active');
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor / Notification / Email';
+      if (activeBreadcrumb) activeBreadcrumb.textContent = 'SMTP';
+    } else if (viewName === 'noti-email-recipients') {
+      if (navNotiEmailRecipients) navNotiEmailRecipients.classList.add('active');
+      if (viewNotiEmailRecipients) viewNotiEmailRecipients.classList.add('active');
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor / Notification / Email';
+      if (activeBreadcrumb) activeBreadcrumb.textContent = '주소 등록';
+    } else if (viewName === 'detail') {
+      if (viewSgDetail) viewSgDetail.classList.add('active');
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'SG Manage';
+      if (activeBreadcrumb) activeBreadcrumb.textContent = selectedSg ? selectedSg.groupName : 'Details';
+    }
   }
 }
 
