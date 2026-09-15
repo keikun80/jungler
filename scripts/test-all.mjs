@@ -7,7 +7,9 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import readline from 'readline/promises';
 import { fromIni } from '@aws-sdk/credential-provider-ini';
+import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts';
 import { SignatureV4 } from '@smithy/signature-v4';
 import { HttpRequest } from '@smithy/protocol-http';
 import { Sha256 } from '@aws-crypto/sha256-js';
@@ -62,16 +64,103 @@ async function loadConfig() {
     }
   } catch (e) {}
 
-  const profile = process.env.AWS_PROFILE || env.HUB_PROFILE || 'l-iam-s2';
-  const region = process.env.AWS_REGION || env.REGION || 'ap-northeast-2';
-  const stackName = process.env.STACK_NAME || env.STACK_NAME || defaultStack;
+  const profile = process.argv[2] || process.env.AWS_PROFILE || env.HUB_PROFILE || 'l-iam-s2';
+  const region = process.argv[3] || process.env.AWS_REGION || env.REGION || 'ap-northeast-2';
+  const stackName = process.argv[4] || process.env.STACK_NAME || env.STACK_NAME || defaultStack;
 
   return { profile, region, stackName };
 }
 
-async function getStackOutputs(profile, region, stackName) {
-  const credentials = fromIni({ profile });
-  const cfn = new CloudFormationClient({ region, credentials });
+async function resolveCredentials(initialProfile, region) {
+  async function testCredentials(provider) {
+    try {
+      const sts = new STSClient({ region, credentials: provider });
+      const identity = await sts.send(new GetCallerIdentityCommand({}));
+      return identity;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // 1. Try specified AWS profile
+  if (initialProfile) {
+    try {
+      const provider = fromIni({ profile: initialProfile });
+      const id = await testCredentials(provider);
+      if (id) {
+        return { credentialsProvider: provider, profile: initialProfile, identity: id };
+      }
+    } catch (e) {}
+  }
+
+  // 2. Try environment variables
+  if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+    const provider = () => Promise.resolve({
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      sessionToken: process.env.AWS_SESSION_TOKEN
+    });
+    const id = await testCredentials(provider);
+    if (id) {
+      return { credentialsProvider: provider, profile: 'environment', identity: id };
+    }
+  }
+
+  // 3. Interactive Prompt for user input
+  console.log(`\n${C.yellow}[AWS Authentication Required]${C.reset}`);
+  console.log(`${C.dim}No valid AWS credentials found for profile '${initialProfile}'. Please provide credentials:${C.reset}\n`);
+
+  if (!process.stdin.isTTY) {
+    throw new Error(`Authentication failed for profile '${initialProfile}'. In non-interactive environments, please set AWS_PROFILE or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY.`);
+  }
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+  try {
+    while (true) {
+      console.log(`Authentication Options:`);
+      console.log(`  1) Enter AWS Profile Name (e.g. l-iam-s2, default)`);
+      console.log(`  2) Enter Access Key ID & Secret Access Key manually`);
+      const choice = (await rl.question(`Choose [1/2] (Default 1): `)).trim() || '1';
+
+      if (choice === '1') {
+        const inputProfile = (await rl.question(`Enter AWS Profile Name: `)).trim() || initialProfile;
+        try {
+          const provider = fromIni({ profile: inputProfile });
+          const id = await testCredentials(provider);
+          if (id) {
+            rl.close();
+            return { credentialsProvider: provider, profile: inputProfile, identity: id };
+          }
+        } catch (e) {}
+        console.log(`${C.red}Authentication failed for profile '${inputProfile}'. Please try again.${C.reset}\n`);
+      } else {
+        const ak = (await rl.question(`Enter AWS Access Key ID: `)).trim();
+        const sk = (await rl.question(`Enter AWS Secret Access Key: `)).trim();
+        const st = (await rl.question(`Enter AWS Session Token (Optional, press Enter if none): `)).trim();
+
+        if (ak && sk) {
+          const provider = () => Promise.resolve({
+            accessKeyId: ak,
+            secretAccessKey: sk,
+            sessionToken: st || undefined
+          });
+          const id = await testCredentials(provider);
+          if (id) {
+            rl.close();
+            return { credentialsProvider: provider, profile: 'manual', identity: id };
+          }
+        }
+        console.log(`${C.red}Invalid AWS credentials provided. Please try again.${C.reset}\n`);
+      }
+    }
+  } finally {
+    rl.close();
+  }
+}
+
+async function getStackOutputs(credentialsProvider, region, stackName) {
+  const cfn = new CloudFormationClient({ region, credentials: credentialsProvider });
 
   try {
     const res = await cfn.send(new DescribeStacksCommand({ StackName: stackName }));
@@ -88,8 +177,7 @@ async function getStackOutputs(profile, region, stackName) {
   }
 }
 
-function createSignedFetcher(apiEndpoint, region, profile) {
-  const credentialsProvider = fromIni({ profile });
+function createSignedFetcher(apiEndpoint, region, credentialsProvider) {
   const signer = new SignatureV4({
     credentials: credentialsProvider,
     region,
@@ -176,13 +264,16 @@ async function main() {
   console.log(`${C.bright}${C.magenta} Jungle Tools Automated End-to-End Test Suite ${C.reset}`);
   console.log(`${C.bright}${C.magenta}============================================================${C.reset}\n`);
 
-  const { profile, region, stackName } = await loadConfig();
-  console.log(`${C.dim}Environment Profile :${C.reset} ${C.white}${profile}${C.reset}`);
-  console.log(`${C.dim}AWS Region          :${C.reset} ${C.white}${region}${C.reset}`);
-  console.log(`${C.dim}CloudFormation Stack:${C.reset} ${C.white}${stackName}${C.reset}\n`);
+  const { profile: initialProfile, region, stackName } = await loadConfig();
+  console.log(`${C.dim}Target AWS Region   :${C.reset} ${C.white}${region}${C.reset}`);
+  console.log(`${C.dim}Target CloudFormation Stack:${C.reset} ${C.white}${stackName}${C.reset}`);
+
+  // Resolve & Authenticate Credentials (with interactive prompt fallback)
+  const { credentialsProvider, profile, identity } = await resolveCredentials(initialProfile, region);
+  console.log(`${C.dim}Authenticated Identity :${C.reset} ${C.green}${identity.Arn}${C.reset} ${C.dim}(Account: ${identity.Account})${C.reset}\n`);
 
   console.log(`${C.yellow}[1/3] Resolving CloudFormation Stack Outputs...${C.reset}`);
-  const outputs = await getStackOutputs(profile, region, stackName);
+  const outputs = await getStackOutputs(credentialsProvider, region, stackName);
   const apiEndpoint = outputs.ApiEndpoint;
   const auditBucket = outputs.AuditLogsBucketName;
 
@@ -194,8 +285,8 @@ async function main() {
   console.log(`  ${C.green}✔${C.reset} API Endpoint   : ${C.cyan}${apiEndpoint}${C.reset}`);
   console.log(`  ${C.green}✔${C.reset} WORM S3 Bucket : ${C.cyan}${auditBucket || 'N/A'}${C.reset}\n`);
 
-  const signedFetch = createSignedFetcher(apiEndpoint, region, profile);
-  const s3Client = new S3Client({ region, credentials: fromIni({ profile }) });
+  const signedFetch = createSignedFetcher(apiEndpoint, region, credentialsProvider);
+  const s3Client = new S3Client({ region, credentials: credentialsProvider });
 
   console.log(`${C.yellow}[2/3] Executing Automated Feature Test Cases...${C.reset}\n`);
 
