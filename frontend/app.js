@@ -2761,7 +2761,7 @@ function sendTestRecipientsReport() {
     }, 1200);
 }
 
-// Dynamic Brand Title & DEV Environment Indicator
+// Dynamic Brand Title & DEV Environment Indicator (displays branch & commit ID)
 function initAppBrandTitle() {
   const isDev = Boolean(
     window.APP_CONFIG?.isDev ||
@@ -2770,17 +2770,22 @@ function initAppBrandTitle() {
     window.location.hostname.includes('dev-jungle')
   );
 
+  const gitBranch = window.APP_CONFIG?.gitBranch || 'develop';
+  const rawCommit = window.APP_CONFIG?.gitCommit || '';
+  const gitCommit = rawCommit ? rawCommit.substring(0, 7) : '';
+  const devBadgeText = gitCommit ? `${gitBranch}@${gitCommit}` : gitBranch;
+
   const logoTitleEl = document.getElementById('app-logo-title') || document.querySelector('.sidebar-header .logo span');
   if (logoTitleEl) {
     if (isDev) {
-      logoTitleEl.innerHTML = 'Jungle tools<span class="badge" style="margin-left: 6px; font-size: 0.68rem; font-weight: 700; background: #f59e0b; color: #1e1e2e; padding: 2px 6px; border-radius: 4px; vertical-align: middle;">(DEV)</span>';
+      logoTitleEl.innerHTML = `Jungle tools<span class="badge" title="Git Branch: ${gitBranch} | Commit: ${gitCommit || 'N/A'}" style="margin-left: 6px; font-size: 0.65rem; font-weight: 700; background: #f59e0b; color: #1e1e2e; padding: 2px 6px; border-radius: 4px; vertical-align: middle; letter-spacing: 0.3px; font-family: monospace;">(${devBadgeText})</span>`;
     } else {
       logoTitleEl.textContent = 'Jungle Tools';
     }
   }
 
   if (isDev) {
-    document.title = 'Jungle tools(DEV) Console';
+    document.title = `Jungle tools(${devBadgeText}) Console`;
   }
 }
 
