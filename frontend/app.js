@@ -1538,13 +1538,28 @@ function renderAuditLogsTable(logs) {
   logs.forEach(log => {
     const tr = document.createElement('tr');
     
+    // Action format: strip _RULES and show clean action name (Create, Update, Delete)
     let actionBadge = '';
-    if (log.action === 'CREATE') actionBadge = '<span class="badge badge-create">Create</span>';
-    else if (log.action === 'UPDATE_RULES') actionBadge = '<span class="badge badge-update">Update Rules</span>';
-    else if (log.action === 'DELETE') actionBadge = '<span class="badge badge-delete">Delete</span>';
-    else actionBadge = `<span class="badge">${log.action}</span>`;
+    const cleanAction = (log.action || '').toUpperCase().replace(/_RULES$/i, '').trim();
+    if (cleanAction === 'CREATE') actionBadge = '<span class="badge badge-create">Create</span>';
+    else if (cleanAction === 'UPDATE') actionBadge = '<span class="badge badge-update">Update</span>';
+    else if (cleanAction === 'DELETE') actionBadge = '<span class="badge badge-delete">Delete</span>';
+    else actionBadge = `<span class="badge">${cleanAction || log.action}</span>`;
 
-    const formattedDate = new Date(log.timestamp).toLocaleString();
+    // Timestamp format: YYYY/MM/DD HH:mm:ss
+    let formattedDate = log.timestamp;
+    if (log.timestamp) {
+      const d = new Date(log.timestamp);
+      if (!isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        const ss = String(d.getSeconds()).padStart(2, '0');
+        formattedDate = `${y}/${m}/${day} ${hh}:${mm}:${ss}`;
+      }
+    }
 
     const statusClass = log.status === 'SUCCESS' ? 'badge-success' : 'badge-failure';
     const statusBadge = `<span class="badge ${statusClass}">${log.status || 'UNKNOWN'}</span>`;
