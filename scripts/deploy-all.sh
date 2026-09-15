@@ -128,9 +128,9 @@ echo -e "${GREEN}S3 Bucket Name: ${bucket_name}${NC}"
 node -e '
   const fs = require("fs");
   const env = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-  const targetAccounts = [{ id: String(env.HUB_ACCOUNT_ID), label: "Hub Account (" + env.HUB_ACCOUNT_ID + " - " + (env.HUB_PROFILE || "Hub") + ")" }];
+  const targetAccounts = [{ id: String(env.HUB_ACCOUNT_ID), label: "Hub (" + (env.HUB_PROFILE || "Hub") + ")" }];
   if (Array.isArray(env.SPOKE_PROFILES)) {
-    env.SPOKE_PROFILES.forEach(s => targetAccounts.push({ id: String(s.accountId), label: s.profile + " (" + s.accountId + ")" }));
+    env.SPOKE_PROFILES.forEach(s => targetAccounts.push({ id: String(s.accountId), label: s.profile }));
   }
   const isDev = process.argv[5] === "develop" || process.argv[6] === "dev-jungle";
   const gitBranch = process.argv[5] || "";

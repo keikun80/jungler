@@ -155,6 +155,24 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedAccount && targetAccountSelect) targetAccountSelect.value = savedAccount;
   if (savedRole && targetRoleInput) targetRoleInput.value = savedRole;
 
+  // Update Sidebar Bottom Info Displays
+  const apiDisplay = document.getElementById('api-endpoint-display');
+  const roleDisplay = document.getElementById('target-role-display');
+  if (apiDisplay) {
+    apiDisplay.textContent = apiEndpoint || '-';
+    apiDisplay.title = apiEndpoint || '';
+  }
+  if (roleDisplay) {
+    const activeRole = (targetRoleInput && targetRoleInput.value) || (window.APP_CONFIG && window.APP_CONFIG.defaultRoleName) || 'JungleToolsCrossAccountRole';
+    roleDisplay.textContent = activeRole;
+    roleDisplay.title = activeRole;
+  }
+
+  // Initialize Lucide Icons
+  if (window.lucide) {
+    lucide.createIcons();
+  }
+
   // Check active BFF session cookie on initial load
   checkAuthSession();
 

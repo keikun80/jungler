@@ -36,6 +36,19 @@
           </button>
         </div>
 
+        <!-- Target Account (Profile) Selector -->
+        <div class="sidebar-account-container">
+          <div class="sidebar-account-label">
+            <i data-lucide="layers"></i>
+            <span>Target Account</span>
+          </div>
+          <div class="sidebar-account-select-wrapper">
+            <select id="target-account-select" class="sidebar-account-select">
+            </select>
+            <i data-lucide="chevron-down" class="select-chevron"></i>
+          </div>
+        </div>
+
         <div class="sidebar-divider" style="margin: 8px 0;"></div>
 
         <!-- 1. SG Manage Group -->
@@ -113,6 +126,29 @@
           </div>
         </div>
       </nav>
+
+      <!-- Sidebar Bottom Info Panel (API Endpoint & Role) -->
+      <div class="sidebar-footer">
+        <div class="sidebar-info-card">
+          <div class="sidebar-info-row">
+            <div class="sidebar-info-label">
+              <i data-lucide="link-2"></i>
+              <span>API Endpoint</span>
+            </div>
+            <span id="api-endpoint-display" class="sidebar-info-val code-text" title="API Endpoint URL">-</span>
+          </div>
+          <div class="sidebar-info-row" style="margin-top: 6px;">
+            <div class="sidebar-info-label">
+              <i data-lucide="shield-check"></i>
+              <span>Role Name</span>
+            </div>
+            <span id="target-role-display" class="sidebar-info-val code-text" title="Cross-Account Role">JungleToolsCrossAccountRole</span>
+          </div>
+        </div>
+        <!-- Hidden inputs for fallback / internal binding -->
+        <input type="hidden" id="api-endpoint-input" />
+        <input type="hidden" id="target-role-input" value="JungleToolsCrossAccountRole" />
+      </div>
     </aside>
 
     <!-- Main Content Area -->
@@ -130,22 +166,6 @@
           <div class="api-status-badge offline" id="api-status">
             <span class="status-dot"></span>
             <span id="api-status-text">Disconnected</span>
-          </div>
-          <div class="api-input-wrapper" style="width: 240px;">
-            <i data-lucide="link-2" class="input-icon"></i>
-            <input type="text" id="api-endpoint-input" placeholder="API Endpoint URL" />
-            <button id="btn-save-endpoint" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;">Set</button>
-          </div>
-          <!-- Target Account Selector -->
-          <div class="api-input-wrapper" style="width: 190px;">
-            <i data-lucide="key-round" class="input-icon"></i>
-            <select id="target-account-select" style="width: 100%; border: none; font-size: 0.8rem; background: none; outline: none; padding: 6px 4px;">
-            </select>
-          </div>
-          <!-- Target Role Input -->
-          <div class="api-input-wrapper" style="width: 200px;">
-            <i data-lucide="user-check" class="input-icon"></i>
-            <input type="text" id="target-role-input" placeholder="Role Name" style="font-size: 0.8rem; padding: 6px 4px; border: none; outline: none; background: none;" />
           </div>
           <div class="user-session-info" id="session-info" style="display: none; align-items: center; gap: 12px; border-left: 1px solid var(--border-color); padding-left: 16px;">
             <span id="session-user" class="code-text" style="font-size: 0.75rem; color: var(--accent-cyan);">IAM User</span>
