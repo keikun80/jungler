@@ -798,6 +798,43 @@ function showToast(message, type = 'success', actionOption = null) {
   }, 6000);
 }
 
+// Universal Clipboard Copy Helper (works on both HTTPS and HTTP / non-secure contexts)
+async function copyToClipboard(text) {
+  if (!text) return;
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      console.warn('navigator.clipboard failed, attempting fallback...', e);
+    }
+  }
+
+  // Fallback using temporary textarea for non-secure HTTP (S3 website hosting)
+  return new Promise((resolve, reject) => {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      textArea.setAttribute('readonly', '');
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      if (successful) {
+        resolve(true);
+      } else {
+        reject(new Error('execCommand copy returned false'));
+      }
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
 // Test Connection and load Data (Authenticated wrapper)
 async function testAndFetchData() {
   setApiStatus('testing');
@@ -1563,7 +1600,7 @@ function renderAuditLogsTable(logs) {
         const s3Path = btnCopy.getAttribute('data-s3-path');
         if (s3Path) {
           try {
-            await navigator.clipboard.writeText(s3Path);
+            await copyToClipboard(s3Path);
             showToast('S3 경로가 클립보드에 복사되었습니다.', 'success');
           } catch (err) {
             showToast('복사 실패: ' + err.message, 'error');
