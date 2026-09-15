@@ -213,22 +213,24 @@ async function checkAuthSession() {
 // Event Listeners Setup
 function setupEventListeners() {
   // Connect API Endpoint
-  saveApiBtn.addEventListener('click', () => {
-    const url = apiInput.value.trim().replace(/\/$/, '');
-    if (!url) {
-      showToast('Endpoint URL cannot be empty.', 'error');
-      return;
-    }
-    apiEndpoint = url;
-    localStorage.setItem('sg_api_endpoint', apiEndpoint);
-    if (sessionUser) fetchHomeOverviewData();
-  });
+  if (saveApiBtn) {
+    saveApiBtn.addEventListener('click', () => {
+      const url = apiInput ? apiInput.value.trim().replace(/\/$/, '') : '';
+      if (!url) {
+        showToast('Endpoint URL cannot be empty.', 'error');
+        return;
+      }
+      apiEndpoint = url;
+      localStorage.setItem('sg_api_endpoint', apiEndpoint);
+      if (sessionUser) fetchHomeOverviewData();
+    });
+  }
 
   // Login Trigger
-  loginSubmitBtn.addEventListener('click', handleLogin);
+  if (loginSubmitBtn) loginSubmitBtn.addEventListener('click', handleLogin);
 
   // Logout Trigger
-  logoutBtn.addEventListener('click', handleLogout);
+  if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 
   // Close Auth Modal Button & Backdrop click
   if (btnCloseAuthModal) {
@@ -380,14 +382,18 @@ function setupEventListeners() {
 
 
   // Refresh SGs
-  btnRefreshSgs.addEventListener('click', () => {
-    if (validateEndpoint() && validateAuth()) testAndFetchData();
-  });
+  if (btnRefreshSgs) {
+    btnRefreshSgs.addEventListener('click', () => {
+      if (validateEndpoint() && validateAuth()) testAndFetchData();
+    });
+  }
 
   // Refresh Logs
-  btnRefreshLogs.addEventListener('click', () => {
-    if (validateEndpoint() && validateAuth()) fetchAuditLogs();
-  });
+  if (btnRefreshLogs) {
+    btnRefreshLogs.addEventListener('click', () => {
+      if (validateEndpoint() && validateAuth()) fetchAuditLogs();
+    });
+  }
 
   // Refresh Backups
   const btnRefreshBackups = document.getElementById('btn-refresh-backups');
@@ -406,36 +412,54 @@ function setupEventListeners() {
   if (tabBackupRds) tabBackupRds.addEventListener('click', () => switchBackupTab('rds'));
 
   // Create SG Modal triggers
-  btnOpenCreateSg.addEventListener('click', () => {
-    if (!validateEndpoint() || !validateAuth()) return;
-    populateVpcDropdown();
-    modalCreateSg.classList.add('open');
-  });
+  if (btnOpenCreateSg) {
+    btnOpenCreateSg.addEventListener('click', () => {
+      if (!validateEndpoint() || !validateAuth()) return;
+      populateVpcDropdown();
+      if (modalCreateSg) modalCreateSg.classList.add('open');
+    });
+  }
 
-  btnCloseCreateModal.addEventListener('click', () => modalCreateSg.classList.remove('open'));
-  btnCancelCreateSg.addEventListener('click', () => modalCreateSg.classList.remove('open'));
-  btnSubmitCreateSg.addEventListener('click', handleCreateSecurityGroup);
+  if (btnCloseCreateModal) {
+    btnCloseCreateModal.addEventListener('click', () => {
+      if (modalCreateSg) modalCreateSg.classList.remove('open');
+    });
+  }
+  if (btnCancelCreateSg) {
+    btnCancelCreateSg.addEventListener('click', () => {
+      if (modalCreateSg) modalCreateSg.classList.remove('open');
+    });
+  }
+  if (btnSubmitCreateSg) {
+    btnSubmitCreateSg.addEventListener('click', handleCreateSecurityGroup);
+  }
 
   // Close log modal
-  closeLogModalBtns.forEach(btn => {
-    btn.addEventListener('click', () => modalLogDetail.classList.remove('open'));
-  });
+  if (closeLogModalBtns) {
+    closeLogModalBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (modalLogDetail) modalLogDetail.classList.remove('open');
+      });
+    });
+  }
 
   // Rule detail tab navigation
-  tabInbound.addEventListener('click', () => switchRulesTab('inbound'));
-  tabOutbound.addEventListener('click', () => switchRulesTab('outbound'));
+  if (tabInbound) tabInbound.addEventListener('click', () => switchRulesTab('inbound'));
+  if (tabOutbound) tabOutbound.addEventListener('click', () => switchRulesTab('outbound'));
 
   // Modify Rules
-  btnAddInbound.addEventListener('click', () => addRuleRow('inbound'));
-  btnAddOutbound.addEventListener('click', () => addRuleRow('outbound'));
+  if (btnAddInbound) btnAddInbound.addEventListener('click', () => addRuleRow('inbound'));
+  if (btnAddOutbound) btnAddOutbound.addEventListener('click', () => addRuleRow('outbound'));
   
-  btnCancelRules.addEventListener('click', () => {
-    if (selectedSg) selectSecurityGroup(selectedSg.groupId);
-  });
-  btnSaveRules.addEventListener('click', handleSaveRules);
+  if (btnCancelRules) {
+    btnCancelRules.addEventListener('click', () => {
+      if (selectedSg) selectSecurityGroup(selectedSg.groupId);
+    });
+  }
+  if (btnSaveRules) btnSaveRules.addEventListener('click', handleSaveRules);
 
   // Delete SG
-  btnDeleteSg.addEventListener('click', handleDeleteSecurityGroup);
+  if (btnDeleteSg) btnDeleteSg.addEventListener('click', handleDeleteSecurityGroup);
 
   // Target Account Change Trigger
   const targetAccountSelect = document.getElementById('target-account-select');
@@ -535,18 +559,20 @@ function showSessionInfo() {
   if (sessionUser) {
     const rawArn = sessionUser.arn || '';
     const displayLabel = rawArn ? (rawArn.split('/').pop() || sessionUser.account) : (sessionUser.account || 'Connected');
-    if (isSessionExpired) {
-      sessionUserLabel.textContent = `세션 만료 (${displayLabel})`;
-      sessionUserLabel.style.color = '#d97706';
-      if (btnRelogin) btnRelogin.style.display = 'inline-flex';
-    } else {
-      sessionUserLabel.textContent = `IAM: ${displayLabel}`;
-      sessionUserLabel.style.color = 'var(--accent-cyan)';
-      if (btnRelogin) btnRelogin.style.display = 'none';
+    if (sessionUserLabel) {
+      if (isSessionExpired) {
+        sessionUserLabel.textContent = `세션 만료 (${displayLabel})`;
+        sessionUserLabel.style.color = '#d97706';
+        if (btnRelogin) btnRelogin.style.display = 'inline-flex';
+      } else {
+        sessionUserLabel.textContent = `IAM: ${displayLabel}`;
+        sessionUserLabel.style.color = 'var(--accent-cyan)';
+        if (btnRelogin) btnRelogin.style.display = 'none';
+      }
     }
-    sessionInfo.style.display = 'flex';
+    if (sessionInfo) sessionInfo.style.display = 'flex';
   } else {
-    sessionInfo.style.display = 'none';
+    if (sessionInfo) sessionInfo.style.display = 'none';
   }
 }
 
@@ -901,20 +927,21 @@ async function testAndFetchData() {
 }
 
 function setApiStatus(status) {
+  if (!apiStatusBadge) return;
   apiStatusBadge.className = 'api-status-badge';
   
   if (status === 'online') {
     apiStatusBadge.classList.add('online');
-    apiStatusText.textContent = 'Online';
+    if (apiStatusText) apiStatusText.textContent = 'Online';
   } else if (status === 'testing') {
     apiStatusBadge.classList.add('offline');
-    apiStatusText.textContent = 'Connecting...';
+    if (apiStatusText) apiStatusText.textContent = 'Connecting...';
   } else if (status === 'expired') {
     apiStatusBadge.classList.add('expired');
-    apiStatusText.textContent = 'Session Expired';
+    if (apiStatusText) apiStatusText.textContent = 'Session Expired';
   } else {
     apiStatusBadge.classList.add('offline');
-    apiStatusText.textContent = 'Disconnected';
+    if (apiStatusText) apiStatusText.textContent = 'Disconnected';
   }
 }
 
