@@ -2741,18 +2741,45 @@ function sendTestRecipientsReport() {
     if (window.lucide) lucide.createIcons();
   }
 
-  setTimeout(() => {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = `<i data-lucide="send"></i> <span>활성 수신자 전체 테스트 발송</span>`;
-      if (window.lucide) lucide.createIcons();
-    }
-    showToast(`활성 수신자 ${activeRecipients.length}명에게 테스트 백업 보고서 발송을 완료했습니다.`, 'success');
-  }, 1200);
+    setTimeout(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="send"></i> <span>활성 수신자 전체 테스트 발송</span>`;
+        if (window.lucide) lucide.createIcons();
+      }
+      showToast(`활성 수신자 ${activeRecipients.length}명에게 테스트 백업 보고서 발송을 완료했습니다.`, 'success');
+    }, 1200);
 }
+
+// Dynamic Brand Title & DEV Environment Indicator
+function initAppBrandTitle() {
+  const isDev = Boolean(
+    window.APP_CONFIG?.isDev ||
+    window.APP_CONFIG?.gitBranch === 'develop' ||
+    window.APP_CONFIG?.stackName === 'dev-jungle' ||
+    window.location.hostname.includes('dev-jungle')
+  );
+
+  const logoTitleEl = document.getElementById('app-logo-title') || document.querySelector('.sidebar-header .logo span');
+  if (logoTitleEl) {
+    if (isDev) {
+      logoTitleEl.innerHTML = 'Jungle tools<span class="badge" style="margin-left: 6px; font-size: 0.68rem; font-weight: 700; background: #f59e0b; color: #1e1e2e; padding: 2px 6px; border-radius: 4px; vertical-align: middle;">(DEV)</span>';
+    } else {
+      logoTitleEl.textContent = 'Jungle Tools';
+    }
+  }
+
+  if (isDev) {
+    document.title = 'Jungle tools(DEV) Console';
+  }
+}
+
+// Initial brand title setup
+initAppBrandTitle();
 
 // Attach SMTP and Recipient Event Handlers
 document.addEventListener('DOMContentLoaded', () => {
+  initAppBrandTitle();
   const btnSaveSmtp = document.getElementById('btn-save-smtp');
   const btnTestSmtp = document.getElementById('btn-test-smtp');
   const btnOpenAddRecipient = document.getElementById('btn-open-add-recipient');
