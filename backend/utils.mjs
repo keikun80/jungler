@@ -113,20 +113,43 @@ export async function recordAuditLog(docClient, tableName, { sgId, action, detai
   const detailsObj = typeof details === "object" ? details : { raw: details || "" };
   const detailsStr = typeof details === "object" ? JSON.stringify(details) : (details || "");
 
+  const auditBucket = process.env.AUDIT_LOG_BUCKET;
+  let s3Key = null;
+  let s3Location = null;
+
+  if (auditBucket) {
+    const date = new Date(timestamp);
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    const sanitizedSgId = safeSgId.replace(/[^a-zA-Z0-9-_]/g, "_");
+    const sanitizedAction = (action || "ACTION").replace(/[^a-zA-Z0-9-_]/g, "_");
+    const sanitizedStatus = (status || "UNKNOWN").replace(/[^a-zA-Z0-9-_]/g, "_");
+    const timeFormatted = timestamp.replace(/[:.]/g, "-");
+    s3Key = `audit-logs/year=${year}/month=${month}/day=${day}/${sanitizedSgId}_${timeFormatted}_${sanitizedAction}_${sanitizedStatus}.json`;
+    s3Location = `s3://${auditBucket}/${s3Key}`;
+  }
+
   // 1. Record to DynamoDB for fast UI querying
   if (docClient && tableName) {
     try {
       const { PutCommand } = await import("@aws-sdk/lib-dynamodb");
+      const ddbItem = {
+        sgId: safeSgId,
+        timestamp,
+        action,
+        status,
+        details: detailsStr
+      };
+      if (s3Location) {
+        ddbItem.s3Location = s3Location;
+        ddbItem.s3Key = s3Key;
+        ddbItem.s3Bucket = auditBucket;
+      }
       await docClient.send(
         new PutCommand({
           TableName: tableName,
-          Item: {
-            sgId: safeSgId,
-            timestamp,
-            action,
-            status,
-            details: detailsStr
-          }
+          Item: ddbItem
         })
       );
     } catch (err) {
@@ -135,26 +158,16 @@ export async function recordAuditLog(docClient, tableName, { sgId, action, detai
   }
 
   // 2. Record to S3 with Object Lock for immutable WORM compliance
-  const auditBucket = process.env.AUDIT_LOG_BUCKET;
-  if (auditBucket) {
+  if (auditBucket && s3Key) {
     try {
       const s3Client = getLocalS3Client();
-      const date = new Date(timestamp);
-      const year = date.getUTCFullYear();
-      const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-      const day = String(date.getUTCDate()).padStart(2, "0");
-      const sanitizedSgId = safeSgId.replace(/[^a-zA-Z0-9-_]/g, "_");
-      const sanitizedAction = (action || "ACTION").replace(/[^a-zA-Z0-9-_]/g, "_");
-      const sanitizedStatus = (status || "UNKNOWN").replace(/[^a-zA-Z0-9-_]/g, "_");
-      const timeFormatted = timestamp.replace(/[:.]/g, "-");
-      const s3Key = `audit-logs/year=${year}/month=${month}/day=${day}/${sanitizedSgId}_${timeFormatted}_${sanitizedAction}_${sanitizedStatus}.json`;
-
       const logPayload = {
         sgId: safeSgId,
         timestamp,
         action,
         status,
         details: detailsObj,
+        s3Location,
         recordedAt: new Date().toISOString()
       };
 
@@ -166,7 +179,7 @@ export async function recordAuditLog(docClient, tableName, { sgId, action, detai
           ContentType: "application/json"
         })
       );
-      console.log(`Successfully archived audit log to S3 with Object Lock: s3://${auditBucket}/${s3Key}`);
+      console.log(`Successfully archived audit log to S3 with Object Lock: ${s3Location}`);
     } catch (s3Err) {
       console.error(`Failed to record audit log to S3 [${action}] (${status}):`, s3Err.message);
     }

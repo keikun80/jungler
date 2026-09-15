@@ -1453,7 +1453,7 @@ async function handleDeleteSecurityGroup() {
 async function fetchAuditLogs() {
   tableBodyLogs.innerHTML = `
     <tr>
-      <td colspan="5">
+      <td colspan="6">
         <div class="loading-spinner-wrapper">
           <div class="spinner"></div>
           <span class="loading-text">Loading audit trail logs...</span>
@@ -1475,7 +1475,7 @@ async function fetchAuditLogs() {
     showToast(`Failed to fetch logs: ${error.message}`, 'error');
     tableBodyLogs.innerHTML = `
       <tr>
-        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
+        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
           Failed to fetch audit logs.
         </td>
       </tr>
@@ -1490,7 +1490,7 @@ function renderAuditLogsTable(logs) {
   if (logs.length === 0) {
     tableBodyLogs.innerHTML = `
       <tr>
-        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
+        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
           No audit logs found in DynamoDB.
         </td>
       </tr>
@@ -1512,6 +1512,17 @@ function renderAuditLogsTable(logs) {
     const statusClass = log.status === 'SUCCESS' ? 'badge-success' : 'badge-failure';
     const statusBadge = `<span class="badge ${statusClass}">${log.status || 'UNKNOWN'}</span>`;
 
+    const s3PathDisplay = log.s3Location ? `
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span class="code-text" style="font-size: 0.72rem; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.08); padding: 3px 6px; border-radius: 4px;" title="${log.s3Location}">
+          ${log.s3Location}
+        </span>
+        <button class="btn-copy-s3-path" title="Copy S3 Path" data-s3-path="${log.s3Location}" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 3px 5px; border-radius: 4px; display: inline-flex; align-items: center;">
+          <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
+        </button>
+      </div>
+    ` : '<span style="color: var(--text-muted); font-size: 0.78rem;">-</span>';
+
     tr.innerHTML = `
       <td class="code-text" style="background: none; border: none; font-size: 0.8rem;">${formattedDate}</td>
       <td class="code-text" style="background: none; border: none; color: var(--accent-cyan); font-size: 0.8rem;">${log.sgId}</td>
@@ -1520,27 +1531,53 @@ function renderAuditLogsTable(logs) {
       <td>
         <span class="btn-link btn-view-log-details" style="font-size: 0.82rem;">View Details</span>
       </td>
+      <td>
+        ${s3PathDisplay}
+      </td>
     `;
 
     tr.querySelector('.btn-view-log-details').addEventListener('click', () => {
       try {
         const detailsObj = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
-        logDetailJson.textContent = JSON.stringify({
+        const modalPayload = {
           sgId: log.sgId,
           timestamp: log.timestamp,
           action: log.action,
-          status: log.status,
-          details: detailsObj
-        }, null, 2);
+          status: log.status
+        };
+        if (log.s3Location) modalPayload.s3Location = log.s3Location;
+        modalPayload.details = detailsObj;
+
+        logDetailJson.textContent = JSON.stringify(modalPayload, null, 2);
         modalLogDetail.classList.add('open');
       } catch (err) {
-        logDetailJson.textContent = log.details;
+        logDetailJson.textContent = typeof log.details === 'string' ? log.details : JSON.stringify(log.details, null, 2);
         modalLogDetail.classList.add('open');
       }
     });
 
+    const btnCopy = tr.querySelector('.btn-copy-s3-path');
+    if (btnCopy) {
+      btnCopy.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const s3Path = btnCopy.getAttribute('data-s3-path');
+        if (s3Path) {
+          try {
+            await navigator.clipboard.writeText(s3Path);
+            showToast('S3 경로가 클립보드에 복사되었습니다.', 'success');
+          } catch (err) {
+            showToast('복사 실패: ' + err.message, 'error');
+          }
+        }
+      });
+    }
+
     tableBodyLogs.appendChild(tr);
   });
+
+  if (window.lucide) {
+    lucide.createIcons();
+  }
 }
 
 // Backup Monitor Tab Switcher
