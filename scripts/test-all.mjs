@@ -177,65 +177,61 @@ async function getStackOutputs(credentialsProvider, region, stackName) {
   }
 }
 
-function createSignedFetcher(apiEndpoint, region, credentialsProvider) {
-  const signer = new SignatureV4({
-    credentials: credentialsProvider,
-    region,
-    service: 'execute-api',
-    sha256: Sha256
-  });
+function createSessionCookieFetcher(apiEndpoint) {
+  let sessionCookie = null;
 
-  return async function signedFetch(path, options = {}) {
-    const method = options.method || 'GET';
-    const body = options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined;
-    const url = new URL(path.startsWith('http') ? path : `${apiEndpoint}${path}`);
+  return {
+    setCookie(cookie) {
+      sessionCookie = cookie;
+    },
+    getCookie() {
+      return sessionCookie;
+    },
+    async fetch(path, options = {}) {
+      const method = options.method || 'GET';
+      const body = options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined;
+      const url = new URL(path.startsWith('http') ? path : `${apiEndpoint}${path}`);
 
-    const headers = {
-      'host': url.host,
-      'accept': 'application/json',
-      ...(options.headers || {})
-    };
+      const headers = {
+        'accept': 'application/json',
+        ...(sessionCookie && !options.skipCookie ? { 'Cookie': sessionCookie } : {}),
+        ...(options.headers || {})
+      };
 
-    if (body) {
-      headers['content-type'] = 'application/json';
+      if (body) {
+        headers['content-type'] = 'application/json';
+      }
+
+      const response = await fetch(url.toString(), {
+        method,
+        headers,
+        body
+      });
+
+      // Capture Set-Cookie if any
+      const setCookieHeader = response.headers.get('set-cookie');
+      if (setCookieHeader) {
+        const match = setCookieHeader.match(/jungle_session=[^;]+/);
+        if (match) {
+          sessionCookie = match[0];
+        }
+      }
+
+      let json = null;
+      const rawText = await response.text();
+      try {
+        json = JSON.parse(rawText);
+      } catch (e) {
+        json = { raw: rawText };
+      }
+
+      return {
+        ok: response.ok,
+        status: response.status,
+        headers: response.headers,
+        data: json
+      };
     }
-
-    const httpRequest = new HttpRequest({
-      method,
-      protocol: url.protocol,
-      hostname: url.hostname,
-      port: url.port ? parseInt(url.port) : undefined,
-      path: url.pathname + url.search,
-      headers,
-      body
-    });
-
-    const signedRequest = await signer.sign(httpRequest);
-
-    const fetchHeaders = {};
-    for (const [k, v] of Object.entries(signedRequest.headers)) {
-      fetchHeaders[k] = v;
-    }
-
-    const response = await fetch(url.toString(), {
-      method,
-      headers: fetchHeaders,
-      body
-    });
-
-    let json = null;
-    const rawText = await response.text();
-    try {
-      json = JSON.parse(rawText);
-    } catch (e) {
-      json = { raw: rawText };
-    }
-
-    return {
-      ok: response.ok,
-      status: response.status,
-      data: json
-    };
   };
 }
 
@@ -262,6 +258,7 @@ async function runTest(category, name, testFn) {
 async function main() {
   console.log(`\n${C.bright}${C.magenta}============================================================${C.reset}`);
   console.log(`${C.bright}${C.magenta} Jungle Tools Automated End-to-End Test Suite ${C.reset}`);
+  console.log(`${C.bright}${C.magenta} (BFF HttpOnly Session Cookie Architecture)   ${C.reset}`);
   console.log(`${C.bright}${C.magenta}============================================================${C.reset}\n`);
 
   const { profile: initialProfile, region, stackName } = await loadConfig();
@@ -285,7 +282,7 @@ async function main() {
   console.log(`  ${C.green}✔${C.reset} API Endpoint   : ${C.cyan}${apiEndpoint}${C.reset}`);
   console.log(`  ${C.green}✔${C.reset} WORM S3 Bucket : ${C.cyan}${auditBucket || 'N/A'}${C.reset}\n`);
 
-  const signedFetch = createSignedFetcher(apiEndpoint, region, credentialsProvider);
+  const bffClient = createSessionCookieFetcher(apiEndpoint);
   const s3Client = new S3Client({ region, credentials: credentialsProvider });
 
   console.log(`${C.yellow}[2/3] Executing Automated Feature Test Cases...${C.reset}\n`);
@@ -295,9 +292,43 @@ async function main() {
   const testGroupName = `jungle-e2e-test-${Date.now()}`;
   let originalSlackConfig = null;
 
-  // 1. Security Groups & VPCs Discovery
-  await runTest('SG Manage', 'GET /security-groups (List VPCs & Security Groups)', async () => {
-    const res = await signedFetch('/security-groups');
+  // 1. BFF Auth: Unauthenticated Access Rejection (Security Authorizer Test)
+  await runTest('BFF Security', 'GET /security-groups (Reject Unauthenticated Request without Cookie)', async () => {
+    const res = await bffClient.fetch('/security-groups', { skipCookie: true });
+    if (res.ok || res.status === 200) {
+      throw new Error(`Expected 401/403 Unauthorized, but got ${res.status}`);
+    }
+  });
+
+  // 2. BFF Auth: Login via STS and Obtain HttpOnly Session Cookie
+  await runTest('BFF Auth', 'POST /auth/login (STS Verification & Session Cookie Issuance)', async () => {
+    const rawCreds = await credentialsProvider();
+    const res = await bffClient.fetch('/auth/login', {
+      method: 'POST',
+      body: {
+        accessKeyId: rawCreds.accessKeyId,
+        secretAccessKey: rawCreds.secretAccessKey,
+        sessionToken: rawCreds.sessionToken,
+        region
+      }
+    });
+
+    if (!res.ok) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
+    if (!res.data.authenticated) throw new Error('Response authenticated is not true');
+    if (!bffClient.getCookie()) throw new Error('Set-Cookie header with jungle_session was not received');
+  });
+
+  // 3. BFF Auth: Verify Session Identity (/auth/me)
+  await runTest('BFF Auth', 'GET /auth/me (Verify Active Session & User Identity)', async () => {
+    const res = await bffClient.fetch('/auth/me');
+    if (!res.ok) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
+    if (!res.data.authenticated) throw new Error('Session is not authenticated');
+    if (!res.data.user?.account) throw new Error('User account not found in session');
+  });
+
+  // 4. Security Groups & VPCs Discovery
+  await runTest('SG Manage', 'GET /security-groups (List VPCs & Security Groups with Cookie)', async () => {
+    const res = await bffClient.fetch('/security-groups');
     if (!res.ok) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
     if (!Array.isArray(res.data.vpcs)) throw new Error('Response vpcs is not an array');
     if (res.data.vpcs.length === 0) throw new Error('No VPCs returned in the account');
@@ -306,10 +337,10 @@ async function main() {
     if (!targetVpcId) throw new Error('Could not find a valid vpcId');
   });
 
-  // 2. Create Security Group
+  // 5. Create Security Group
   await runTest('SG Manage', 'POST /security-groups (Create Temporary SG)', async () => {
     if (!targetVpcId) throw new Error('Skipped due to missing targetVpcId');
-    const res = await signedFetch('/security-groups', {
+    const res = await bffClient.fetch('/security-groups', {
       method: 'POST',
       body: {
         groupName: testGroupName,
@@ -325,10 +356,10 @@ async function main() {
     }
   });
 
-  // 3. Update Security Group Rules
+  // 6. Update Security Group Rules
   await runTest('SG Manage', 'PUT /security-groups/{id}/rules (Add Inbound Rule)', async () => {
     if (!testSgId) throw new Error('Skipped due to missing testSgId');
-    const res = await signedFetch(`/security-groups/${testSgId}/rules`, {
+    const res = await bffClient.fetch(`/security-groups/${testSgId}/rules`, {
       method: 'PUT',
       body: {
         inboundRules: [
@@ -346,22 +377,22 @@ async function main() {
     if (!res.ok) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
   });
 
-  // 4. Delete Security Group
+  // 7. Delete Security Group
   await runTest('SG Manage', 'DELETE /security-groups/{id} (Delete Temporary SG)', async () => {
     if (!testSgId) throw new Error('Skipped due to missing testSgId');
-    const res = await signedFetch(`/security-groups/${testSgId}`, {
+    const res = await bffClient.fetch(`/security-groups/${testSgId}`, {
       method: 'DELETE'
     });
 
     if (!res.ok) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
   });
 
-  // 5. Audit Logs & S3 Object Lock Verification
+  // 8. Audit Logs & S3 Object Lock Verification
   await runTest('Audit & WORM', 'GET /audit-logs & S3 Object Lock Governance Retention', async () => {
     // Wait 1.5s for async audit logging to complete
     await new Promise(r => setTimeout(r, 1500));
 
-    const res = await signedFetch('/audit-logs');
+    const res = await bffClient.fetch('/audit-logs');
     if (!res.ok) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
     if (!Array.isArray(res.data.logs)) throw new Error('logs field is not an array');
 
@@ -389,33 +420,33 @@ async function main() {
     }
   });
 
-  // 6. EBS Backups Monitor
+  // 9. EBS Backups Monitor
   await runTest('Backup Monitor', 'GET /backups/ebs (Fetch EBS Snapshots & Volumes)', async () => {
-    const res = await signedFetch('/backups/ebs');
+    const res = await bffClient.fetch('/backups/ebs');
     if (!res.ok) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
     if (!Array.isArray(res.data.volumes)) throw new Error('volumes is not an array');
     if (!Array.isArray(res.data.snapshots)) throw new Error('snapshots is not an array');
   });
 
-  // 7. EFS Backups Monitor
+  // 10. EFS Backups Monitor
   await runTest('Backup Monitor', 'GET /backups/efs (Fetch EFS File Systems)', async () => {
-    const res = await signedFetch('/backups/efs');
+    const res = await bffClient.fetch('/backups/efs');
     if (!res.ok) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
     if (!Array.isArray(res.data.fileSystems)) throw new Error('fileSystems is not an array');
   });
 
-  // 8. RDS Backups Monitor
+  // 11. RDS Backups Monitor
   await runTest('Backup Monitor', 'GET /backups/rds (Fetch RDS DB Snapshots)', async () => {
-    const res = await signedFetch('/backups/rds');
+    const res = await bffClient.fetch('/backups/rds');
     if (!res.ok) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
     if (!Array.isArray(res.data.instances)) throw new Error('instances is not an array');
     if (!Array.isArray(res.data.snapshots)) throw new Error('snapshots is not an array');
   });
 
-  // 9. Slack & Email Config Lifecycle
+  // 12. Slack & Email Config Lifecycle
   await runTest('Notifications', 'GET & POST /slack/config (Read, Update, and Restore)', async () => {
     // 1) Read original
-    const getRes = await signedFetch('/slack/config');
+    const getRes = await bffClient.fetch('/slack/config');
     if (!getRes.ok) throw new Error(`GET /slack/config failed: ${getRes.status}`);
     originalSlackConfig = getRes.data.config || {};
 
@@ -431,7 +462,7 @@ async function main() {
       smtpFrom: 'no-reply@company.co.kr'
     };
 
-    const postRes = await signedFetch('/slack/config', {
+    const postRes = await bffClient.fetch('/slack/config', {
       method: 'POST',
       body: testConfigPayload
     });
@@ -439,17 +470,29 @@ async function main() {
 
     // 3) Restore original
     if (originalSlackConfig && Object.keys(originalSlackConfig).length > 0) {
-      await signedFetch('/slack/config', {
+      await bffClient.fetch('/slack/config', {
         method: 'POST',
         body: originalSlackConfig
       });
     }
   });
 
-  // 10. Notification Report Preview Generation
+  // 13. Notification Report Preview Generation
   await runTest('Notifications', 'GET /slack/preview (Generate Daily Report Preview)', async () => {
-    const res = await signedFetch('/slack/preview');
+    const res = await bffClient.fetch('/slack/preview');
     if (!res.ok) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
+  });
+
+  // 14. BFF Auth: Logout and Session Invalidation
+  await runTest('BFF Auth', 'POST /auth/logout (Invalidate Session in DynamoDB & Clear Cookie)', async () => {
+    const res = await bffClient.fetch('/auth/logout', { method: 'POST' });
+    if (!res.ok) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
+
+    // Verify session is invalidated
+    const checkRes = await bffClient.fetch('/auth/me');
+    if (checkRes.status !== 401 && checkRes.data.authenticated !== false) {
+      throw new Error(`Expected 401 after logout, got: ${checkRes.status}`);
+    }
   });
 
   // Summary Report

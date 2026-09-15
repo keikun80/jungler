@@ -34,8 +34,27 @@ Globals:
         AUDIT_LOG_TABLE: !Ref SgAuditLogsTable
         AUDIT_LOG_BUCKET: !Ref SgAuditLogsBucket
         SLACK_CONFIG_TABLE: !Ref SlackConfigTable
+        USER_SESSIONS_TABLE: !Ref UserSessionsTable
 
 Resources:
+  # DynamoDB Table for User Sessions (BFF)
+  UserSessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !If [IsDefaultStack, "UserSessions", !Sub "${AWS::StackName}-UserSessions"]
+      AttributeDefinitions:
+        - AttributeName: sessionId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: sessionId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+
   # DynamoDB Table for Slack Config
   SlackConfigTable:
     Type: AWS::DynamoDB::Table
@@ -93,13 +112,32 @@ Resources:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
 
-  # HttpApi (API Gateway v2) with CORS Enabled
+  # Lambda Request Authorizer for BFF Session Cookies
+  AuthAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: authorizer/index.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserSessionsTable
+
+  # HttpApi (API Gateway v2) with Session Cookie Authorizer & CORS Enabled
   SgHttpApi:
     Type: AWS::Serverless::HttpApi
     Properties:
       Auth:
-        EnableIamAuthorizer: true
-        DefaultAuthorizer: AWS_IAM
+        DefaultAuthorizer: SessionAuthorizer
+        Authorizers:
+          SessionAuthorizer:
+            FunctionArn: !GetAtt AuthAuthorizerFunction.Arn
+            FunctionPayloadType: REQUEST
+            Identity:
+              Headers:
+                - Cookie
+              ReauthorizeEvery: 0
+            EnableSimpleResponses: true
+            AuthorizerPayloadFormatVersion: 2.0
       CorsConfiguration:
         AllowOrigins:
           - "*"
@@ -112,12 +150,67 @@ Resources:
         AllowHeaders:
           - Content-Type
           - Authorization
-          - X-Amz-Date
-          - X-Amz-Security-Token
-          - X-Amz-Content-Sha256
           - X-Target-Role-Arn
           - X-Target-Region
+          - Cookie
         MaxAge: 600
+
+  # BFF Auth: Login (STS Verification & Set-Cookie)
+  AuthLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: auth/login.handler
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SgHttpApi
+            Path: /auth/login
+            Method: POST
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserSessionsTable
+
+  # BFF Auth: Logout (Session Invalidation)
+  AuthLogoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: auth/logout.handler
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SgHttpApi
+            Path: /auth/logout
+            Method: POST
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserSessionsTable
+
+  # BFF Auth: Current Session Status
+  AuthMeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: auth/me.handler
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SgHttpApi
+            Path: /auth/me
+            Method: GET
+            Auth:
+              Authorizer: NONE
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserSessionsTable
 
   # 1. Get Security Groups & VPCs Lambda Function
   GetSecurityGroupsFunction:

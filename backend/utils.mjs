@@ -94,14 +94,37 @@ export function areAllValidEmails(emailString) {
   return list.every((email) => isValidEmail(email));
 }
 
-export function buildResponse(statusCode, body) {
+export function parseCookies(event) {
+  const cookies = {};
+  if (Array.isArray(event?.cookies)) {
+    event.cookies.forEach((c) => {
+      if (!c) return;
+      const parts = c.split(";");
+      const [name, ...valParts] = parts[0].split("=");
+      if (name) cookies[name.trim()] = decodeURIComponent(valParts.join("=").trim());
+    });
+  } else {
+    const rawCookie = event?.headers?.cookie || event?.headers?.Cookie || "";
+    rawCookie.split(";").forEach((c) => {
+      if (!c) return;
+      const [name, ...valParts] = c.split("=");
+      if (name) cookies[name.trim()] = decodeURIComponent(valParts.join("=").trim());
+    });
+  }
+  return cookies;
+}
+
+export function buildResponse(statusCode, body, customHeaders = {}, event = null) {
+  const origin = event?.headers?.origin || event?.headers?.Origin || "*";
   return {
     statusCode: statusCode,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Credentials": "true",
       "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Target-Role-Arn,X-Target-Region"
+      "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Target-Role-Arn,X-Target-Region,Cookie",
+      ...customHeaders
     },
     body: JSON.stringify(body)
   };

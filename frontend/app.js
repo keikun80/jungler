@@ -4,7 +4,7 @@ let vpcData = [];
 let selectedSg = null;
 let currentInboundRules = [];
 let currentOutboundRules = [];
-let credentials = null; // { accessKeyId, secretAccessKey, sessionToken, region }
+let sessionUser = null; // { account, arn, userId, region }
 let isSessionExpired = false;
 let currentWebhooksList = [];
 
@@ -155,24 +155,42 @@ window.addEventListener('DOMContentLoaded', () => {
   if (savedAccount && targetAccountSelect) targetAccountSelect.value = savedAccount;
   if (savedRole && targetRoleInput) targetRoleInput.value = savedRole;
 
-  // Load saved credentials if any
-  try {
-    const saved = localStorage.getItem('sg_aws_credentials');
-    if (saved) {
-      credentials = JSON.parse(saved);
-      showSessionInfo();
-      testAndFetchData();
-    } else {
-      showLoginOverlay();
-    }
-  } catch (e) {
-    console.error("Error loading credentials:", e);
-    showLoginOverlay();
-  }
+  // Check active BFF session cookie on initial load
+  checkAuthSession();
 
   setupEventListeners();
   switchView('home');
 });
+
+// Check if user has active session cookie via /auth/me
+async function checkAuthSession() {
+  if (!apiEndpoint) return;
+  try {
+    const res = await fetch(`${apiEndpoint}/auth/me`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    if (res.ok) {
+      const data = await res.json();
+      sessionUser = data.user;
+      isSessionExpired = false;
+      showSessionInfo();
+      setApiStatus('online');
+      testAndFetchData();
+    } else {
+      sessionUser = null;
+      showSessionInfo();
+      showLoginOverlay();
+      setApiStatus('offline');
+    }
+  } catch (e) {
+    console.warn("No active session:", e);
+    sessionUser = null;
+    showSessionInfo();
+    showLoginOverlay();
+    setApiStatus('offline');
+  }
+}
 
 // Event Listeners Setup
 function setupEventListeners() {
@@ -185,7 +203,7 @@ function setupEventListeners() {
     }
     apiEndpoint = url;
     localStorage.setItem('sg_api_endpoint', apiEndpoint);
-    if (credentials) fetchHomeOverviewData();
+    if (sessionUser) fetchHomeOverviewData();
   });
 
   // Login Trigger
@@ -458,7 +476,7 @@ function validateEndpoint() {
 
 // Verification Helper for IAM Auth
 function validateAuth() {
-  if (!credentials) {
+  if (!sessionUser) {
     showLoginOverlay();
     showToast('AWS IAM Authentication is required.', 'error');
     return false;
@@ -467,7 +485,7 @@ function validateAuth() {
 }
 
 // Session Expiration Handler
-function handleSessionExpired(reason = '보안 자격 증명이 만료되었습니다. 다시 로그인해 주세요.') {
+function handleSessionExpired(reason = '보안 세션이 만료되었습니다. 다시 로그인해 주세요.') {
   isSessionExpired = true;
   setApiStatus('expired');
   
@@ -483,7 +501,7 @@ function handleSessionExpired(reason = '보안 자격 증명이 만료되었습�
   if (modalSessionExpired) {
     const msgEl = document.getElementById('session-expired-msg');
     if (msgEl && reason) {
-      msgEl.innerHTML = `${reason}<br>보안을 위해 다시 로그인하여 새로운 자격 증명을 입력해 주세요.`;
+      msgEl.innerHTML = `${reason}<br>보안을 위해 다시 로그인하여 자격 증명을 입력해 주세요.`;
     }
     modalSessionExpired.classList.add('open');
   }
@@ -496,14 +514,15 @@ function handleSessionExpired(reason = '보안 자격 증명이 만료되었습�
 
 // Session Info display
 function showSessionInfo() {
-  if (credentials) {
-    const masked = credentials.accessKeyId.substring(0, 5) + "..." + credentials.accessKeyId.substring(credentials.accessKeyId.length - 4);
+  if (sessionUser) {
+    const rawArn = sessionUser.arn || '';
+    const displayLabel = rawArn ? (rawArn.split('/').pop() || sessionUser.account) : (sessionUser.account || 'Connected');
     if (isSessionExpired) {
-      sessionUserLabel.textContent = `세션 만료 (${masked})`;
+      sessionUserLabel.textContent = `세션 만료 (${displayLabel})`;
       sessionUserLabel.style.color = '#d97706';
       if (btnRelogin) btnRelogin.style.display = 'inline-flex';
     } else {
-      sessionUserLabel.textContent = `IAM: ${masked}`;
+      sessionUserLabel.textContent = `IAM: ${displayLabel}`;
       sessionUserLabel.style.color = 'var(--accent-cyan)';
       if (btnRelogin) btnRelogin.style.display = 'none';
     }
@@ -530,16 +549,10 @@ function hideLoginOverlay() {
   authOverlay.classList.remove('open');
 }
 
-// Dynamic Fetch Wrapper with SigV4 Signing
+// BFF Session Fetch Wrapper
 async function signedFetch(url, options = {}) {
-  if (!credentials) {
-    showLoginOverlay();
-    throw new Error("No AWS Credentials configured.");
-  }
-
-  const method = options.method || 'GET';
-  const headers = options.headers || {};
-  const body = options.body || '';
+  options.credentials = 'include';
+  options.headers = options.headers || {};
 
   // Inject target role ARN if cross-account is selected
   const targetAccountSelect = document.getElementById('target-account-select');
@@ -550,13 +563,9 @@ async function signedFetch(url, options = {}) {
     const roleName = targetRoleInput.value.trim();
     const localAccount = (window.APP_CONFIG && window.APP_CONFIG.localAccountId) || '';
     if (targetAccount !== localAccount && roleName) {
-      headers['X-Target-Role-Arn'] = `arn:aws:iam::${targetAccount}:role/${roleName}`;
+      options.headers['X-Target-Role-Arn'] = `arn:aws:iam::${targetAccount}:role/${roleName}`;
     }
   }
-
-  // SigV4 Signing
-  const signedHeaders = signRequest(url, method, headers, body, credentials);
-  options.headers = signedHeaders;
 
   const res = await fetch(url, options);
 
@@ -575,7 +584,7 @@ async function signedFetch(url, options = {}) {
   return res;
 }
 
-// Authenticate Credentials and Fetch Data
+// Authenticate Credentials via BFF and Obtain HttpOnly Session Cookie
 async function handleLogin() {
   const authApiInput = document.getElementById('auth-api-endpoint');
   if (authApiInput && authApiInput.value.trim()) {
@@ -584,10 +593,15 @@ async function handleLogin() {
     if (apiInput) apiInput.value = apiEndpoint;
   }
 
-  const accessKeyId = document.getElementById('auth-access-key').value.replace(/\s+/g, '');
-  const secretAccessKey = document.getElementById('auth-secret-key').value.replace(/\s+/g, '');
-  const sessionToken = document.getElementById('auth-session-token').value.replace(/\s+/g, '');
-  const region = document.getElementById('auth-region').value;
+  const accessKeyInput = document.getElementById('auth-access-key');
+  const secretKeyInput = document.getElementById('auth-secret-key');
+  const sessionTokenInput = document.getElementById('auth-session-token');
+  const regionInput = document.getElementById('auth-region');
+
+  const accessKeyId = accessKeyInput ? accessKeyInput.value.replace(/\s+/g, '') : '';
+  const secretAccessKey = secretKeyInput ? secretKeyInput.value.replace(/\s+/g, '') : '';
+  const sessionToken = sessionTokenInput ? sessionTokenInput.value.replace(/\s+/g, '') : '';
+  const region = regionInput ? regionInput.value : 'ap-northeast-2';
 
   if (!accessKeyId || !secretAccessKey) {
     showToast('Access Key ID and Secret Access Key are required.', 'error');
@@ -597,46 +611,34 @@ async function handleLogin() {
   if (!validateEndpoint()) return;
 
   loginSubmitBtn.disabled = true;
-  loginSubmitBtn.textContent = 'Verifying...';
-
-  // Set temporary credentials for verification
-  const tempCreds = { accessKeyId, secretAccessKey, sessionToken, region };
+  loginSubmitBtn.textContent = 'Verifying via STS...';
 
   try {
-    // Attempt signed test request to check key validity
-    const testUrl = `${apiEndpoint}/security-groups`;
-    const headers = { 'Content-Type': 'application/json' };
-    
-    // Inject target role ARN if cross-account is selected
-    const targetAccountSelect = document.getElementById('target-account-select');
-    const targetRoleInput = document.getElementById('target-role-input');
-    
-    if (targetAccountSelect && targetRoleInput) {
-      const targetAccount = targetAccountSelect.value;
-      const roleName = targetRoleInput.value.trim();
-      const localAccount = (window.APP_CONFIG && window.APP_CONFIG.localAccountId) || '';
-      if (targetAccount !== localAccount && roleName) {
-        headers['X-Target-Role-Arn'] = `arn:aws:iam::${targetAccount}:role/${roleName}`;
-      }
-    }
-    
-    // Manual sign for test request
-    const signedHeaders = signRequest(testUrl, 'GET', headers, '', tempCreds);
-    
-    const res = await fetch(testUrl, { method: 'GET', headers: signedHeaders });
-    if (!res.ok) {
-      if (res.status === 403) throw new Error('Invalid AWS Access Key or authorization failed (403)');
-      throw new Error(`Connection error: ${res.status}`);
+    const loginRes = await fetch(`${apiEndpoint}/auth/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessKeyId, secretAccessKey, sessionToken, region })
+    });
+
+    if (!loginRes.ok) {
+      let errMsg = `Login failed (${loginRes.status})`;
+      try {
+        const errJson = await loginRes.json();
+        if (errJson.message) errMsg = errJson.message;
+      } catch (e) {}
+      throw new Error(errMsg);
     }
 
-    const data = await res.json();
-    vpcData = data.vpcs || [];
-
-    // Success: Store credentials and bind to state
-    credentials = tempCreds;
+    const data = await loginRes.json();
+    sessionUser = data.user;
     isSessionExpired = false;
-    localStorage.setItem('sg_aws_credentials', JSON.stringify(credentials));
-    
+
+    // Clear sensitive input fields from DOM immediately
+    if (accessKeyInput) accessKeyInput.value = '';
+    if (secretKeyInput) secretKeyInput.value = '';
+    if (sessionTokenInput) sessionTokenInput.value = '';
+
     if (btnRelogin) btnRelogin.style.display = 'none';
     if (modalSessionExpired) modalSessionExpired.classList.remove('open');
     if (authExpiredBanner) authExpiredBanner.style.display = 'none';
@@ -644,9 +646,8 @@ async function handleLogin() {
     showSessionInfo();
     hideLoginOverlay();
     setApiStatus('online');
-    renderSidebarVpcList();
-    updateDashboardMetrics();
-    showToast('Signed in successfully and verified access keys.', 'success');
+    testAndFetchData();
+    showToast('Signed in successfully with secure HttpOnly session cookie.', 'success');
 
   } catch (error) {
     console.error(error);
@@ -658,11 +659,21 @@ async function handleLogin() {
   }
 }
 
-// Logout session
-function handleLogout() {
-  credentials = null;
+// Logout session via BFF
+async function handleLogout() {
+  try {
+    if (apiEndpoint) {
+      await fetch(`${apiEndpoint}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    }
+  } catch (e) {
+    console.warn("Logout request failed:", e);
+  }
+
+  sessionUser = null;
   isSessionExpired = false;
-  localStorage.removeItem('sg_aws_credentials');
   if (btnRelogin) btnRelogin.style.display = 'none';
   if (modalSessionExpired) modalSessionExpired.classList.remove('open');
   if (authExpiredBanner) authExpiredBanner.style.display = 'none';
@@ -675,7 +686,7 @@ function handleLogout() {
   updateBackupMetricsUI('-', '-', '-', '-');
   setApiStatus('offline');
   switchView('home');
-  showToast('Logged out and cleared credentials.', 'info');
+  showToast('Logged out and cleared secure session.', 'info');
 }
 
 // Switching View Management
@@ -1668,7 +1679,7 @@ function switchBackupTab(tabName) {
 
 // Fetch All Backups (EBS, EFS, RDS) Data
 async function fetchAllBackupsData() {
-  if (!validateEndpoint() || !credentials) {
+  if (!validateEndpoint() || !sessionUser) {
     showLoginOverlay();
     return;
   }
@@ -1786,7 +1797,7 @@ function updateBackupMetricsUI(total, healthy, failure, unprotected) {
 
 // Background lightweight fetcher for Backup Summary Cards
 async function fetchBackupSummaryOnly() {
-  if (!apiEndpoint || !credentials) return;
+  if (!apiEndpoint || !sessionUser) return;
   try {
     const [ebsRes, efsRes, rdsRes] = await Promise.allSettled([
       signedFetch(`${apiEndpoint}/backups/ebs`),
@@ -1829,7 +1840,7 @@ async function fetchBackupSummaryOnly() {
 
 // Fetch Comprehensive Home Overview (SG + Backups)
 async function fetchHomeOverviewData() {
-  if (!validateEndpoint() || !credentials) {
+  if (!validateEndpoint() || !sessionUser) {
     showLoginOverlay();
     return;
   }

@@ -4,7 +4,8 @@ import {
   isValidEmail,
   areAllValidEmails,
   isValidSlackWebhookUrl,
-  buildResponse
+  buildResponse,
+  parseCookies
 } from '../utils.mjs';
 
 describe('1. Email Validation (RFC 5322 Standard)', () => {
@@ -63,8 +64,17 @@ describe('3. HTTP Response Builder & Security Headers', () => {
     assert.equal(response.statusCode, 200);
     assert.equal(response.headers['Content-Type'], 'application/json; charset=utf-8');
     assert.equal(response.headers['Access-Control-Allow-Origin'], '*');
+    assert.equal(response.headers['Access-Control-Allow-Credentials'], 'true');
     assert.equal(response.headers['Access-Control-Allow-Methods'], 'GET,POST,PUT,DELETE,OPTIONS');
     assert.equal(response.body, JSON.stringify(payload));
+  });
+
+  it('should reflect request Origin for CORS with credentials', () => {
+    const event = { headers: { origin: 'http://localhost:3000' } };
+    const response = buildResponse(200, { ok: true }, {}, event);
+
+    assert.equal(response.headers['Access-Control-Allow-Origin'], 'http://localhost:3000');
+    assert.equal(response.headers['Access-Control-Allow-Credentials'], 'true');
   });
 
   it('should correctly format 400 and 500 error responses', () => {
@@ -74,7 +84,38 @@ describe('3. HTTP Response Builder & Security Headers', () => {
   });
 });
 
-describe('4. Cross-Account IAM Security Pattern', () => {
+describe('4. Cookie Parsing & BFF Session Helpers', () => {
+  it('should parse Cookie from HTTP API v2 cookies array', () => {
+    const event = {
+      cookies: [
+        'jungle_session=abc123sessionid; Path=/',
+        'other_cookie=value123'
+      ]
+    };
+    const cookies = parseCookies(event);
+    assert.equal(cookies.jungle_session, 'abc123sessionid');
+    assert.equal(cookies.other_cookie, 'value123');
+  });
+
+  it('should parse Cookie from headers.cookie string', () => {
+    const event = {
+      headers: {
+        cookie: 'jungle_session=xyz789token; theme=dark'
+      }
+    };
+    const cookies = parseCookies(event);
+    assert.equal(cookies.jungle_session, 'xyz789token');
+    assert.equal(cookies.theme, 'dark');
+  });
+
+  it('should handle empty or missing cookies gracefully', () => {
+    assert.deepEqual(parseCookies({}), {});
+    assert.deepEqual(parseCookies(null), {});
+    assert.deepEqual(parseCookies({ headers: {} }), {});
+  });
+});
+
+describe('5. Cross-Account IAM Security Pattern', () => {
   const roleArnPattern = /^arn:aws:iam::\d{12}:role\/JungleToolsCrossAccountRole$/;
 
   it('should match valid Cross-Account Role ARN pattern', () => {
