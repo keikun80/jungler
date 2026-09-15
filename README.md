@@ -4,6 +4,14 @@
 
 ---
 
+## 📚 공식 매뉴얼 및 기술 문서
+
+- **[📖 종합 사용자 매뉴얼 (User Manual)](docs/USER_MANUAL.md)**: 메뉴별 상세 기능 및 모든 화면 UI 요소 완벽 해설
+- **[🧪 전체 기능 테스트 시나리오 명세서 (Test Scenarios)](TEST_SCENARIOS.md)**: 프론트엔드 UI/단위/E2E 33종 자동화 테스트
+- **[🚀 설치 및 배포 가이드 (Installation Guide)](INSTALL.md)**: CloudFormation & SAM 기반 배포
+
+---
+
 ## 🌟 주요 기능 (Key Features)
 
 ### 1. 🏠 최상단 `Home` 통합 대시보드 (Unified Operations Dashboard)
