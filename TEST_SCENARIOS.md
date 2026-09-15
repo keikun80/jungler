@@ -57,7 +57,22 @@ Choose [1/2] (Default 1):
 
 ## 3. 세부 테스트 시나리오 명세
 
-### [Phase 1] 백엔드 단위 테스트 (Unit Tests - 5개 스위트 / 13개 케이스)
+### [Phase 1.1] 프론트엔드 UI 메뉴 탐색 및 인터랙션 테스트 (Frontend UI Tests - 6개 케이스)
+
+Virtual DOM (JSDOM) 환경에서 `frontend/index.html`과 `frontend/app.js`를 구동하여 사이드바의 각 메뉴 클릭, 뷰 전환, 브레드크럼 동적 갱신, 프로필 선택, 모달 제어를 자동 검증합니다:
+
+| 테스트 케이스 ID | 테스트 대상 UI | 사용자 동작 및 시나리오 | 기대 결과 (Expected Result) |
+| :--- | :--- | :--- | :--- |
+| `FE-NAV-01` | **Initial View & Footer** | **초기 로드 상태 검증**<br>- `DOMContentLoaded` 실행 후 기본 뷰 상태 | 1. `view-home`이 활성화(`active`)됨<br>2. 브레드크럼이 `Home`으로 표시됨<br>3. Target Account 드롭다운에 계정 번호 없는 간소화 명칭(`Hub (l-iam-s2)`) 노출<br>4. 사이드바 최하단에 API Endpoint 및 Role Name 출력 확인 |
+| `FE-NAV-02` | **SG Manage Menu** | **보안 그룹 메뉴 클릭 및 뷰 전환**<br>- `#nav-sg-dashboard`, `#nav-sg-logs` 클릭 | 1. 대시보드 클릭 시 `view-sg-dashboard` 활성화 & 브레드크럼 `SG Manage` / **`Dashboard`**<br>2. 로그 클릭 시 `view-sg-logs` 활성화 & 브레드크럼 `SG Manage` / **`Logs`** |
+| `FE-NAV-03` | **Backup Monitor Menu** | **백업 관제 및 알림 서브메뉴 순회 클릭**<br>- 대시보드, 슬랙 웹훅, 슬랙 이메일, SMTP, 주소 등록 메뉴 순차 클릭 | 1. 각 클릭 시 해당하는 뷰(`view-backup-dashboard`, `view-noti-slack-webhook`, `view-noti-slack-email`, `view-noti-email-smtp`, `view-noti-email-recipients`) 활성화<br>2. 브레드크럼에 다계층 경로(`Backup Monitor / Notification / Slack` / **`웹훅`** 등) 정확히 반영 |
+| `FE-NAV-04` | **Home Quick Jump** | **홈 화면 퀵 액세스 바로가기 버튼**<br>- 대시보드 내 바로가기 버튼 5종 클릭 | 1. `#btn-home-goto-sg` ➔ SG 대시보드 이동<br>2. `#btn-home-goto-backup` ➔ 백업 대시보드 이동<br>3. `#btn-home-goto-slack` ➔ 웹훅 설정 이동<br>4. `#btn-home-goto-email` ➔ 수신자 주소 등록 이동<br>5. `#btn-home-goto-logs` ➔ 감사 로그 이동 |
+| `FE-NAV-05` | **Profile Switch** | **Target Account(프로필) 드롭다운 변경**<br>- `#target-account-select` 값 변경 이벤트 발생 | `localStorage`에 선택된 계정 ID가 즉시 저장되고, 후속 API 요청 헤더(`X-Target-Role-Arn`)에 연동됨 |
+| `FE-NAV-06` | **Modal Lifecycle** | **팝업 모달 열기/닫기 라이프사이클**<br>- SG 생성 모달 및 웹훅 추가 모달 트리거 | 1. 열기 버튼 클릭 시 모달 엘리먼트에 `open` 클래스 추가<br>2. 닫기/취소 버튼 클릭 시 `open` 클래스 정상 제거 |
+
+---
+
+### [Phase 1.2] 백엔드 로직 및 보안 단위 테스트 (Backend Unit Tests - 5개 스위트 / 13개 케이스)
 
 | 스위트 | 테스트 케이스 ID | 테스트 항목 및 시나리오 | 기대 결과 (Expected Result) |
 | :--- | :--- | :--- | :--- |
@@ -100,8 +115,9 @@ Choose [1/2] (Default 1):
 
 ## 4. 테스트 성공 기준 (Success Criteria)
 
-1. **단위 테스트 Pass Rate**: **100% (13/13 통과)**
-2. **E2E 통합 테스트 Pass Rate**: **100% (14/14 통과)**
+1. **프론트엔드 UI & 백엔드 단위 테스트 Pass Rate**: **100% (19/19 통과)**
+2. **실환경 E2E 통합 테스트 Pass Rate**: **100% (14/14 통과)**
+3. **전체 테스트 커버리지**: **총 33개 자동화 테스트 케이스 100% 통과**
 3. **WORM Object Lock 무결성**: 생성된 감사 로그 객체가 `GOVERNANCE` 보존 모드로 잠겨 있어 삭제/변조가 차단됨을 확인.
 4. **리소스 멱등성 및 정리**: E2E 테스트 과정에서 생성된 모든 임시 보안 그룹 및 설정이 테스트 종료 후 100% 원복/삭제되어 리소스 잔여물이 남지 않음.
 
