@@ -57,7 +57,7 @@ Choose [1/2] (Default 1):
 
 ## 3. 세부 테스트 시나리오 명세
 
-### [Phase 1] 백엔드 단위 테스트 (Unit Tests - 4개 스위트 / 9개 케이스)
+### [Phase 1] 백엔드 단위 테스트 (Unit Tests - 5개 스위트 / 13개 케이스)
 
 | 스위트 | 테스트 케이스 ID | 테스트 항목 및 시나리오 | 기대 결과 (Expected Result) |
 | :--- | :--- | :--- | :--- |
@@ -66,18 +66,25 @@ Choose [1/2] (Default 1):
 | | `UT-EMAIL-03` | **다중 수신자 구분자 파싱 검증**<br>- 쉼표(`,`), 세미콜론(`;`), 줄바꿈으로 연결된 이메일 목록 일괄 검증 | 전체가 정상인 경우만 `true`, 하나라도 잘못된 포맷 포함 시 `false` |
 | **2. Slack URL Validation** | `UT-SLACK-01` | **공식 Slack 웹훅 URL 검증**<br>- `hooks.slack.com/services/...`<br>- `hooks.slack.com/workflows/...`<br>- `hooks.slack.com/triggers/...` | 유효성 통과 (`true`) |
 | | `UT-SLACK-02` | **보안 위협 및 스푸핑 URL 차단**<br>- 비보안 HTTP 프로토콜 차단<br>- 피싱 유사 도메인(`evil-hooks.slack.com`) 차단<br>- 허용되지 않은 임의 경로 차단 | 유효성 실패 (`false`) |
-| **3. HTTP Response Builder** | `UT-HTTP-01` | **CORS 및 표준 응답 헤더 생성 검증**<br>- `Access-Control-Allow-Origin: *`<br>- `Content-Type: application/json; charset=utf-8` | 상태 코드 200 및 필수 보안/CORS 헤더가 정상 주입됨 |
-| | `UT-HTTP-02` | **오류 응답 직렬화 검증**<br>- 400 Bad Request, 500 Internal Server Error 생성 | 지정된 상태 코드 및 JSON 에러 메시지 반환 |
-| **4. IAM Security Pattern** | `UT-IAM-01` | **Cross-Account Role ARN 정규식 검증**<br>- `arn:aws:iam::<AccountID>:role/JungleToolsCrossAccountRole` | 패턴 일치 (`true`) |
+| **3. HTTP Response Builder** | `UT-HTTP-01` | **CORS 및 표준 응답 헤더 생성 검증**<br>- `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Credentials: true`<br>- `Content-Type: application/json; charset=utf-8` | 상태 코드 200 및 필수 보안/CORS 헤더가 정상 주입됨 |
+| | `UT-HTTP-02` | **Origin 반사 및 CORS 자격증명 지원 검증**<br>- 요청 Origin(`http://localhost:3000`) 반사 및 자격 증명 쿠키 허용 | `Access-Control-Allow-Origin: http://localhost:3000` |
+| | `UT-HTTP-03` | **오류 응답 직렬화 검증**<br>- 400 Bad Request, 500 Internal Server Error 생성 | 지정된 상태 코드 및 JSON 에러 메시지 반환 |
+| **4. Cookie & BFF Session** | `UT-COOKIE-01` | **HTTP API v2 쿠키 배열 파싱 검증**<br>- `event.cookies` 배열에서 `jungle_session` 추출 | 세션 토큰 정확히 파싱 |
+| | `UT-COOKIE-02` | **Cookie 헤더 문자열 파싱 검증**<br>- `event.headers.cookie` 문자열 파싱 | 세션 토큰 정확히 파싱 |
+| | `UT-COOKIE-03` | **쿠키 부재/빈값 예외 처리 검증**<br>- 빈 객체, `null`, 헤더 없음 시 빈 딕셔너리 반환 | 예외 없이 `{}` 반환 |
+| **5. IAM Security Pattern** | `UT-IAM-01` | **Cross-Account Role ARN 정규식 검증**<br>- `arn:aws:iam::<AccountID>:role/JungleToolsCrossAccountRole` | 패턴 일치 (`true`) |
 | | `UT-IAM-02` | **비인가 IAM 엔티티 접근 차단 검증**<br>- `AdministratorAccess`, `root`, `user/...` 등 임의 역할 주입 시도 차단 | 패턴 불일치 (`false`) |
 
 ---
 
-### [Phase 2] 실환경 E2E 통합 테스트 (Live Cloud E2E - 10개 시나리오)
+### [Phase 2] 실환경 E2E 통합 테스트 (Live Cloud E2E - 14개 시나리오)
 
 | 시나리오 ID | 대상 서비스 | 테스트 항목 및 API | 테스트 절차 및 검증 기준 |
 | :--- | :--- | :--- | :--- |
-| `E2E-SG-01` | **SG Manage** | **VPC 및 보안 그룹 목록 조회**<br>`GET /security-groups` | 1. AWS SigV4 서명으로 엔드포인트 호출<br>2. 응답 상태 코드 `200 OK`<br>3. `vpcs` 배열 내 유효한 `vpcId` 및 연결된 서브넷/CIDR 데이터 존재 검증 |
+| `E2E-AUTH-01` | **BFF Security** | **비인가 요청 차단 검증**<br>`GET /security-groups` (쿠키 없음) | 1. 쿠키 없이 보호된 API 호출<br>2. API Gateway Authorizer가 `401 Unauthorized` 또는 `403 Forbidden` 차단하는지 검증 |
+| `E2E-AUTH-02` | **BFF Auth** | **STS 자격 증명 검증 및 세션 쿠키 발급**<br>`POST /auth/login` | 1. AWS 자격 증명 전송<br>2. STS `GetCallerIdentity` 통과 후 `Set-Cookie: jungle_session=...; HttpOnly; Secure; SameSite=None` 발급 검증 |
+| `E2E-AUTH-03` | **BFF Auth** | **활성 세션 및 신원 확인**<br>`GET /auth/me` | 1. 발급된 세션 쿠키로 세션 상태 조회<br>2. `authenticated: true` 및 사용자 `account`, `arn` 반환 검증 |
+| `E2E-SG-01` | **SG Manage** | **VPC 및 보안 그룹 목록 조회**<br>`GET /security-groups` (쿠키 포함) | 1. 세션 쿠키를 포함하여 엔드포인트 호출<br>2. 응답 상태 코드 `200 OK`<br>3. `vpcs` 배열 내 유효한 `vpcId` 및 연결된 서브넷/CIDR 데이터 존재 검증 |
 | `E2E-SG-02` | **SG Manage** | **임시 보안 그룹 생성**<br>`POST /security-groups` | 1. 첫 번째 VPC를 대상으로 `jungle-e2e-test-<timestamp>` 이름의 SG 생성 요청<br>2. 응답 상태 코드 `200 OK`<br>3. `sg-`로 시작하는 유효한 `groupId` 정상 발급 검증 |
 | `E2E-SG-03` | **SG Manage** | **인바운드 방화벽 규칙 추가**<br>`PUT /security-groups/{id}/rules` | 1. 발급된 `groupId`에 TCP 8080 포트 (`10.0.0.0/16`) 인바운드 규칙 등록<br>2. 응답 상태 코드 `200 OK`<br>3. EC2 보안 그룹에 규칙이 정상 반영되었는지 검증 |
 | `E2E-SG-04` | **SG Manage** | **임시 보안 그룹 삭제 및 정리**<br>`DELETE /security-groups/{id}` | 1. 생성된 임시 보안 그룹에 삭제 요청 전송<br>2. 응답 상태 코드 `200 OK`<br>3. 계정 내 리소스 누수 없이 정상 삭제 완료 검증 |
@@ -87,13 +94,14 @@ Choose [1/2] (Default 1):
 | `E2E-BACKUP-03` | **Backup Monitor** | **RDS 데이터베이스 스냅샷 조회**<br>`GET /backups/rds` | 1. RDS 백업 관제 엔드포인트 호출<br>2. 응답 상태 코드 `200 OK`<br>3. `instances` 및 `snapshots` 배열 스키마 정상 반환 검증 |
 | `E2E-NOTI-01` | **Notifications** | **Slack 및 이메일 설정 라이프사이클**<br>`GET & POST /slack/config` | 1. 기존 설정 백업 (`GET /slack/config`)<br>2. 다중 수신자 이메일, 웹훅, SMTP 설정을 포함한 테스트 설정 저장 (`POST /slack/config`)<br>3. 응답 코드 `200 OK` 확인 후 기존 설정으로 완벽 복원 |
 | `E2E-NOTI-02` | **Notifications** | **백업 종합 리포트 미리보기 생성**<br>`GET /slack/preview` | 1. 실시간 멀티 서비스(EBS/EFS/RDS) 종합 백업 리포트 생성 호출<br>2. 응답 상태 코드 `200 OK`<br>3. 리포트 본문 및 보호/미보호 자원 집계 데이터 정상 반환 검증 |
+| `E2E-AUTH-04` | **BFF Auth** | **세션 로그아웃 및 쿠키 파기 검증**<br>`POST /auth/logout` | 1. 세션 파기 요청 전송<br>2. DynamoDB 세션 레코드 삭제 확인<br>3. 이후 `/auth/me` 호출 시 `401 Unauthorized` 정상 반환 검증 |
 
 ---
 
 ## 4. 테스트 성공 기준 (Success Criteria)
 
-1. **단위 테스트 Pass Rate**: **100% (9/9 통과)**
-2. **E2E 통합 테스트 Pass Rate**: **100% (10/10 통과)**
+1. **단위 테스트 Pass Rate**: **100% (13/13 통과)**
+2. **E2E 통합 테스트 Pass Rate**: **100% (14/14 통과)**
 3. **WORM Object Lock 무결성**: 생성된 감사 로그 객체가 `GOVERNANCE` 보존 모드로 잠겨 있어 삭제/변조가 차단됨을 확인.
 4. **리소스 멱등성 및 정리**: E2E 테스트 과정에서 생성된 모든 임시 보안 그룹 및 설정이 테스트 종료 후 100% 원복/삭제되어 리소스 잔여물이 남지 않음.
 
