@@ -155,6 +155,15 @@ Resources:
           - Cookie
         MaxAge: 600
 
+  # Permission to allow API Gateway v2 to invoke the Request Authorizer
+  AuthAuthorizerFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AuthAuthorizerFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SgHttpApi}/*"
+
   # BFF Auth: Login (STS Verification & Set-Cookie)
   AuthLoginFunction:
     Type: AWS::Serverless::Function
