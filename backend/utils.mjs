@@ -1,7 +1,16 @@
 import { EC2Client } from "@aws-sdk/client-ec2";
 import { STSClient, AssumeRoleCommand } from "@aws-sdk/client-sts";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 let localEc2Client = null;
+let localS3Client = null;
+
+function getLocalS3Client() {
+  if (!localS3Client) {
+    localS3Client = new S3Client({ region: process.env.AWS_REGION || "ap-northeast-2" });
+  }
+  return localS3Client;
+}
 
 export async function getAwsClient(ClientClass, event) {
   const targetRoleArn = event.headers?.["x-target-role-arn"] || event.headers?.["X-Target-Role-Arn"];
@@ -97,25 +106,69 @@ export function buildResponse(statusCode, body) {
     body: JSON.stringify(body)
   };
 }
+
 export async function recordAuditLog(docClient, tableName, { sgId, action, details, status = "SUCCESS" }) {
-  if (!docClient || !tableName) return;
-  try {
-    const { PutCommand } = await import("@aws-sdk/lib-dynamodb");
-    const timestamp = new Date().toISOString();
-    const detailsStr = typeof details === "object" ? JSON.stringify(details) : (details || "");
-    await docClient.send(
-      new PutCommand({
-        TableName: tableName,
-        Item: {
-          sgId: sgId || "UNKNOWN",
-          timestamp,
-          action,
-          status,
-          details: detailsStr
-        }
-      })
-    );
-  } catch (err) {
-    console.error(`Failed to record audit log [${action}] (${status}):`, err.message);
+  const timestamp = new Date().toISOString();
+  const safeSgId = sgId || "UNKNOWN";
+  const detailsObj = typeof details === "object" ? details : { raw: details || "" };
+  const detailsStr = typeof details === "object" ? JSON.stringify(details) : (details || "");
+
+  // 1. Record to DynamoDB for fast UI querying
+  if (docClient && tableName) {
+    try {
+      const { PutCommand } = await import("@aws-sdk/lib-dynamodb");
+      await docClient.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            sgId: safeSgId,
+            timestamp,
+            action,
+            status,
+            details: detailsStr
+          }
+        })
+      );
+    } catch (err) {
+      console.error(`Failed to record audit log to DynamoDB [${action}] (${status}):`, err.message);
+    }
+  }
+
+  // 2. Record to S3 with Object Lock for immutable WORM compliance
+  const auditBucket = process.env.AUDIT_LOG_BUCKET;
+  if (auditBucket) {
+    try {
+      const s3Client = getLocalS3Client();
+      const date = new Date(timestamp);
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(date.getUTCDate()).padStart(2, "0");
+      const sanitizedSgId = safeSgId.replace(/[^a-zA-Z0-9-_]/g, "_");
+      const sanitizedAction = (action || "ACTION").replace(/[^a-zA-Z0-9-_]/g, "_");
+      const sanitizedStatus = (status || "UNKNOWN").replace(/[^a-zA-Z0-9-_]/g, "_");
+      const timeFormatted = timestamp.replace(/[:.]/g, "-");
+      const s3Key = `audit-logs/year=${year}/month=${month}/day=${day}/${sanitizedSgId}_${timeFormatted}_${sanitizedAction}_${sanitizedStatus}.json`;
+
+      const logPayload = {
+        sgId: safeSgId,
+        timestamp,
+        action,
+        status,
+        details: detailsObj,
+        recordedAt: new Date().toISOString()
+      };
+
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: auditBucket,
+          Key: s3Key,
+          Body: JSON.stringify(logPayload, null, 2),
+          ContentType: "application/json"
+        })
+      );
+      console.log(`Successfully archived audit log to S3 with Object Lock: s3://${auditBucket}/${s3Key}`);
+    } catch (s3Err) {
+      console.error(`Failed to record audit log to S3 [${action}] (${status}):`, s3Err.message);
+    }
   }
 }

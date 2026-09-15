@@ -7,6 +7,17 @@ Parameters:
     Type: String
     Default: '[]'
     Description: 'JSON string of target accounts to scan for backup reports'
+  ObjectLockMode:
+    Type: String
+    Default: 'GOVERNANCE'
+    AllowedValues:
+      - 'GOVERNANCE'
+      - 'COMPLIANCE'
+    Description: 'S3 Object Lock retention mode (GOVERNANCE for develop/testing, COMPLIANCE for production)'
+  ObjectLockRetentionDays:
+    Type: Number
+    Default: 30
+    Description: 'Default retention period in days for S3 Object Lock audit logs'
 
 Conditions:
   IsDefaultStack: !Equals [!Ref "AWS::StackName", "jungle-tools-stack"]
@@ -21,6 +32,7 @@ Globals:
     Environment:
       Variables:
         AUDIT_LOG_TABLE: !Ref SgAuditLogsTable
+        AUDIT_LOG_BUCKET: !Ref SgAuditLogsBucket
         SLACK_CONFIG_TABLE: !Ref SlackConfigTable
 
 Resources:
@@ -57,6 +69,29 @@ Resources:
       BillingMode: PAY_PER_REQUEST
       SSESpecification:
         SSEEnabled: true
+
+  # S3 Bucket for WORM Audit Logs with Object Lock
+  SgAuditLogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      ObjectLockEnabled: true
+      VersioningConfiguration:
+        Status: Enabled
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: !Ref ObjectLockMode
+            Days: !Ref ObjectLockRetentionDays
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
 
   # HttpApi (API Gateway v2) with CORS Enabled
   SgHttpApi:
@@ -126,6 +161,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SgAuditLogsTable
+        - S3CrudPolicy:
+            BucketName: !Ref SgAuditLogsBucket
         - Statement:
             - Effect: Allow
               Action:
@@ -153,6 +190,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SgAuditLogsTable
+        - S3CrudPolicy:
+            BucketName: !Ref SgAuditLogsBucket
         - Statement:
             - Effect: Allow
               Action:
@@ -183,6 +222,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SgAuditLogsTable
+        - S3CrudPolicy:
+            BucketName: !Ref SgAuditLogsBucket
         - Statement:
             - Effect: Allow
               Action:
@@ -209,6 +250,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref SgAuditLogsTable
+        - S3ReadPolicy:
+            BucketName: !Ref SgAuditLogsBucket
 
   # 5a. Get EBS Snapshots Lambda Function
   GetEbsSnapshotsFunction:
@@ -445,4 +488,7 @@ Outputs:
   FrontendWebsiteUrl:
     Description: S3 Static Website URL
     Value: !GetAtt SgFrontendBucket.WebsiteURL
+  AuditLogsBucketName:
+    Description: S3 Audit Logs Bucket Name with Object Lock
+    Value: !Ref SgAuditLogsBucket
 
