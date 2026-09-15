@@ -5,7 +5,8 @@ import {
   areAllValidEmails,
   isValidSlackWebhookUrl,
   buildResponse,
-  parseCookies
+  parseCookies,
+  isValidRoleArn
 } from '../utils.mjs';
 
 describe('1. Email Validation (RFC 5322 Standard)', () => {
@@ -116,18 +117,19 @@ describe('4. Cookie Parsing & BFF Session Helpers', () => {
 });
 
 describe('5. Cross-Account IAM Security Pattern', () => {
-  const roleArnPattern = /^arn:aws:iam::\d{12}:role\/JungleToolsCrossAccountRole$/;
-
   it('should match valid Cross-Account Role ARN pattern', () => {
-    assert.equal(roleArnPattern.test('arn:aws:iam::123456789012:role/JungleToolsCrossAccountRole'), true);
-    assert.equal(roleArnPattern.test('arn:aws:iam::999888777666:role/JungleToolsCrossAccountRole'), true);
+    assert.equal(isValidRoleArn('arn:aws:iam::123456789012:role/JungleToolsCrossAccountRole'), true);
+    assert.equal(isValidRoleArn('arn:aws:iam::999888777666:role/JungleToolsCrossAccountRole'), true);
   });
 
   it('should reject unauthorized role ARNs or arbitrary IAM entities', () => {
-    assert.equal(roleArnPattern.test('arn:aws:iam::123456789012:role/AdminRole'), false);
-    assert.equal(roleArnPattern.test('arn:aws:iam::123456789012:user/Alice'), false);
-    assert.equal(roleArnPattern.test('arn:aws:iam::123456789012:root'), false);
-    assert.equal(roleArnPattern.test('arn:aws:iam::123456789012:role/AdministratorAccess'), false);
-    assert.equal(roleArnPattern.test('arn:aws:s3:::sensitive-bucket'), false);
+    assert.equal(isValidRoleArn('arn:aws:iam::123456789012:role/AdminRole'), false);
+    assert.equal(isValidRoleArn('arn:aws:iam::123456789012:user/Alice'), false);
+    assert.equal(isValidRoleArn('arn:aws:iam::123456789012:root'), false);
+    assert.equal(isValidRoleArn('arn:aws:iam::123456789012:role/AdministratorAccess'), false);
+    assert.equal(isValidRoleArn('arn:aws:s3:::sensitive-bucket'), false);
+    assert.equal(isValidRoleArn(''), false);
+    assert.equal(isValidRoleArn(null), false);
+    assert.equal(isValidRoleArn(undefined), false);
   });
 });

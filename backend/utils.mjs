@@ -12,6 +12,12 @@ function getLocalS3Client() {
   return localS3Client;
 }
 
+export function isValidRoleArn(arn) {
+  if (!arn || typeof arn !== "string") return false;
+  const roleArnPattern = /^arn:aws:iam::\d{12}:role\/JungleToolsCrossAccountRole$/;
+  return roleArnPattern.test(arn.trim());
+}
+
 export async function getAwsClient(ClientClass, event) {
   const targetRoleArn = event.headers?.["x-target-role-arn"] || event.headers?.["X-Target-Role-Arn"];
   const region = event.headers?.["x-target-region"] || event.headers?.["X-Target-Region"] || process.env.AWS_REGION || "ap-northeast-2";
@@ -21,9 +27,8 @@ export async function getAwsClient(ClientClass, event) {
   }
 
   // Security Validation: Enforce exact role ARN pattern to prevent unauthorized assume role injection
-  const roleArnPattern = /^arn:aws:iam::\d{12}:role\/JungleToolsCrossAccountRole$/;
   const trimmedRoleArn = targetRoleArn.trim();
-  if (!roleArnPattern.test(trimmedRoleArn)) {
+  if (!isValidRoleArn(trimmedRoleArn)) {
     console.error(`Security Violation: Unauthorized or malformed targetRoleArn '${targetRoleArn}'`);
     throw new Error("Invalid or unauthorized target role ARN.");
   }
@@ -31,12 +36,15 @@ export async function getAwsClient(ClientClass, event) {
   try {
     console.log(`Assuming role: ${trimmedRoleArn} in region: ${region} for ${ClientClass.name}`);
     const stsClient = new STSClient({ region });
+    const externalId = process.env.CROSS_ACCOUNT_EXTERNAL_ID;
+    const assumeRoleParams = {
+      RoleArn: trimmedRoleArn,
+      RoleSessionName: "JungleToolsSession",
+      DurationSeconds: 900,
+      ...(externalId && { ExternalId: externalId })
+    };
     const assumeRoleResponse = await stsClient.send(
-      new AssumeRoleCommand({
-        RoleArn: trimmedRoleArn,
-        RoleSessionName: "JungleToolsSession",
-        DurationSeconds: 900
-      })
+      new AssumeRoleCommand(assumeRoleParams)
     );
 
     const credentials = assumeRoleResponse.Credentials;

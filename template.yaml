@@ -18,6 +18,10 @@ Parameters:
     Type: Number
     Default: 30
     Description: 'Default retention period in days for S3 Object Lock audit logs'
+  CrossAccountExternalId:
+    Type: String
+    Default: 'JungleToolsSecureExternalId'
+    Description: 'External ID required for cross-account STS AssumeRole calls'
 
 Conditions:
   IsDefaultStack: !Equals [!Ref "AWS::StackName", "jungle-tools-stack"]
@@ -35,6 +39,7 @@ Globals:
         AUDIT_LOG_BUCKET: !Ref SgAuditLogsBucket
         SLACK_CONFIG_TABLE: !Ref SlackConfigTable
         USER_SESSIONS_TABLE: !Ref UserSessionsTable
+        CROSS_ACCOUNT_EXTERNAL_ID: !Ref CrossAccountExternalId
 
 Resources:
   # DynamoDB Table for User Sessions (BFF)
