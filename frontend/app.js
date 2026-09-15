@@ -2778,7 +2778,7 @@ function initAppBrandTitle() {
   const logoTitleEl = document.getElementById('app-logo-title') || document.querySelector('.sidebar-header .logo span');
   if (logoTitleEl) {
     if (isDev) {
-      logoTitleEl.innerHTML = `Jungle tools<span class="badge" title="Git Branch: ${gitBranch} | Commit: ${gitCommit || 'N/A'}" style="margin-left: 6px; font-size: 0.65rem; font-weight: 700; background: #f59e0b; color: #1e1e2e; padding: 2px 6px; border-radius: 4px; vertical-align: middle; letter-spacing: 0.3px; font-family: monospace;">(${devBadgeText})</span>`;
+      logoTitleEl.innerHTML = `Jungle tools<span class="dev-branch-badge" title="Git Branch: ${gitBranch} | Commit: ${gitCommit || 'N/A'}" style="margin-left: 6px; font-size: 0.65rem; font-weight: 700; background: #f59e0b !important; background-color: #f59e0b !important; color: #000000 !important; -webkit-text-fill-color: #000000 !important; padding: 2px 6px; border-radius: 4px; vertical-align: middle; letter-spacing: 0.3px; font-family: monospace; text-transform: none; display: inline-block;">(${devBadgeText})</span>`;
     } else {
       logoTitleEl.textContent = 'Jungle Tools';
     }
