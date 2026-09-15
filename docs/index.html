@@ -10,76 +10,25 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="../frontend/styles.css">
   <style>
-    :root {
-      --bg-base: #0b0f19;
-      --bg-surface: #111827;
-      --bg-card: rgba(17, 24, 39, 0.7);
-      --bg-card-hover: rgba(31, 41, 55, 0.8);
-      --border-color: rgba(255, 255, 255, 0.08);
-      --border-focus: #6366f1;
-      
-      --text-main: #f9fafb;
-      --text-muted: #9ca3af;
-      --text-dim: #6b7280;
-      
-      --primary: #6366f1;
-      --primary-light: #818cf8;
-      --primary-glow: rgba(99, 102, 241, 0.25);
-      
-      --accent-cyan: #06b6d4;
-      --accent-emerald: #10b981;
-      --accent-amber: #f59e0b;
-      --accent-rose: #f43f5e;
-      
-      --font-display: 'Outfit', sans-serif;
-      --font-body: 'Inter', sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
-      
-      --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 16px;
-      --radius-xl: 24px;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    /* Documentation Specific Overrides & Layout */
     body {
-      background-color: var(--bg-base);
-      color: var(--text-main);
-      font-family: var(--font-body);
+      background-color: #0b0f19 !important;
+      color: #f9fafb !important;
+      font-family: 'Inter', -apple-system, sans-serif !important;
       line-height: 1.6;
-      display: flex;
+      display: flex !important;
+      height: auto !important;
       min-height: 100vh;
-      overflow-x: hidden;
+      overflow-y: auto !important;
     }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: var(--bg-base);
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #1f2937;
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #374151;
-    }
-
-    /* Layout */
-    .docs-sidebar {
-      width: 320px;
-      background: rgba(17, 24, 39, 0.95);
+    .docs-sidebar-nav {
+      width: 300px;
+      background: rgba(15, 23, 42, 0.95);
       backdrop-filter: blur(16px);
-      border-right: 1px solid var(--border-color);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
       height: 100vh;
       position: sticky;
       top: 0;
@@ -89,715 +38,783 @@
       z-index: 50;
     }
 
-    .docs-sidebar-header {
+    .docs-brand {
       padding: 24px 20px;
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    .docs-logo-icon {
-      width: 32px;
-      height: 32px;
-      color: var(--primary);
-      filter: drop-shadow(0 0 10px var(--primary-glow));
-    }
-
-    .docs-logo-title {
-      font-family: var(--font-display);
-      font-size: 1.25rem;
-      font-weight: 700;
-      background: linear-gradient(135deg, #fff 40%, var(--accent-cyan));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .docs-badge {
-      font-size: 0.7rem;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: rgba(99, 102, 241, 0.15);
-      color: var(--primary-light);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-    }
-
-    .docs-nav {
+    .docs-nav-menu {
       flex: 1;
       overflow-y: auto;
       padding: 20px 16px;
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 20px;
     }
 
-    .docs-nav-group-title {
-      font-size: 0.75rem;
+    .docs-menu-group-title {
+      font-size: 0.72rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--text-dim);
-      margin-bottom: 8px;
+      color: #6b7280;
+      margin-bottom: 6px;
       padding-left: 8px;
     }
 
-    .docs-nav-links {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .docs-nav-link {
+    .docs-link {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 8px 12px;
-      border-radius: var(--radius-sm);
-      color: var(--text-muted);
+      border-radius: 6px;
+      color: #9ca3af;
       text-decoration: none;
-      font-size: 0.88rem;
+      font-size: 0.86rem;
       font-weight: 500;
-      transition: all 0.2s ease;
+      transition: all 0.2s;
     }
 
-    .docs-nav-link svg {
-      width: 16px;
-      height: 16px;
-      color: var(--text-dim);
-      transition: color 0.2s;
-    }
-
-    .docs-nav-link:hover {
+    .docs-link:hover {
       color: #fff;
       background: rgba(255, 255, 255, 0.05);
     }
 
-    .docs-nav-link:hover svg {
-      color: var(--primary-light);
+    .docs-link.active {
+      color: #6366f1;
+      background: rgba(99, 102, 241, 0.12);
+      font-weight: 600;
+      border-left: 3px solid #6366f1;
     }
 
-    .docs-nav-link.active {
-      color: #fff;
-      background: rgba(99, 102, 241, 0.15);
-      border-left: 3px solid var(--primary);
-    }
-
-    .docs-nav-link.active svg {
-      color: var(--primary);
-    }
-
-    .docs-main {
+    .docs-content {
       flex: 1;
-      max-width: 1080px;
-      padding: 48px 64px 120px;
-      overflow-y: auto;
+      max-width: 1100px;
+      padding: 48px 56px 120px;
     }
 
-    /* Typography */
-    h1, h2, h3, h4 {
-      font-family: var(--font-display);
+    .doc-section {
+      margin-bottom: 64px;
+      scroll-margin-top: 40px;
+    }
+
+    .doc-h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.4rem;
+      font-weight: 800;
       color: #fff;
+      margin-bottom: 12px;
       letter-spacing: -0.02em;
     }
 
-    h1 {
-      font-size: 2.5rem;
-      font-weight: 800;
-      margin-bottom: 12px;
-      line-height: 1.2;
-    }
-
-    .lead-text {
-      font-size: 1.15rem;
-      color: var(--text-muted);
-      margin-bottom: 36px;
-      line-height: 1.7;
-    }
-
-    h2 {
-      font-size: 1.65rem;
+    .doc-h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.6rem;
       font-weight: 700;
-      margin-top: 56px;
+      color: #fff;
+      margin-top: 48px;
       margin-bottom: 20px;
       padding-bottom: 10px;
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       align-items: center;
       gap: 10px;
     }
 
-    h2 svg {
-      color: var(--primary);
+    .doc-h2 svg {
+      color: #6366f1;
     }
 
-    h3 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-top: 32px;
-      margin-bottom: 14px;
-      color: #e5e7eb;
+    .doc-lead {
+      font-size: 1.1rem;
+      color: #9ca3af;
+      margin-bottom: 32px;
     }
 
-    p {
-      margin-bottom: 16px;
-      color: #d1d5db;
-    }
-
-    ul, ol {
-      margin-bottom: 20px;
-      padding-left: 24px;
-      color: #d1d5db;
-    }
-
-    li {
-      margin-bottom: 8px;
-    }
-
-    /* Cards & Panels */
-    .docs-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      margin-bottom: 28px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-    }
-
-    .screenshot-container {
-      background: #000;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
+    /* Interactive Live Screen Wireframe Preview Box */
+    .live-preview-box {
+      background: #0f172a;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 12px;
       overflow: hidden;
-      margin: 20px 0 28px;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
-      transition: transform 0.2s, border-color 0.2s;
+      margin: 24px 0 32px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
 
-    .screenshot-container:hover {
-      border-color: rgba(99, 102, 241, 0.4);
-    }
-
-    .screenshot-container img {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
-
-    .screenshot-caption {
-      padding: 12px 18px;
-      background: rgba(17, 24, 39, 0.9);
-      border-top: 1px solid var(--border-color);
-      font-size: 0.85rem;
-      color: var(--text-muted);
+    .live-preview-header {
+      background: #1e293b;
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      font-weight: 600;
     }
 
-    .screenshot-caption svg {
-      width: 16px;
-      height: 16px;
-      color: var(--accent-cyan);
-    }
-
-    /* Callouts */
-    .callout {
-      padding: 16px 20px;
-      border-radius: var(--radius-md);
-      margin: 20px 0;
+    .live-preview-dots {
       display: flex;
-      gap: 14px;
-      align-items: flex-start;
-      border-left: 4px solid;
+      gap: 6px;
     }
 
-    .callout.info {
-      background: rgba(99, 102, 241, 0.08);
-      border-left-color: var(--primary);
+    .live-preview-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
     }
 
-    .callout.info svg { color: var(--primary); }
-
-    .callout.success {
-      background: rgba(16, 185, 129, 0.08);
-      border-left-color: var(--accent-emerald);
+    .live-preview-body {
+      padding: 24px;
+      background: #0b0f19;
     }
 
-    .callout.success svg { color: var(--accent-emerald); }
-
-    .callout.warning {
-      background: rgba(245, 158, 11, 0.08);
-      border-left-color: var(--accent-amber);
+    /* UI Badge tags */
+    .elem-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      margin-right: 6px;
     }
 
-    .callout.warning svg { color: var(--accent-amber); }
-
-    .callout-icon {
-      flex-shrink: 0;
-      margin-top: 2px;
+    .elem-tag.btn-tag {
+      background: rgba(6, 182, 212, 0.15);
+      color: #22d3ee;
+      border-color: rgba(6, 182, 212, 0.3);
     }
 
-    .callout-content {
-      font-size: 0.92rem;
-      color: #e5e7eb;
+    .elem-tag.badge-tag {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.3);
     }
 
-    .callout-content strong {
-      display: block;
-      margin-bottom: 4px;
-      color: #fff;
+    .elem-tag.input-tag {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border-color: rgba(245, 158, 11, 0.3);
     }
 
-    /* Table */
-    .docs-table-wrapper {
-      overflow-x: auto;
-      margin: 20px 0;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border-color);
-    }
-
-    table {
+    .spec-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
+      margin: 16px 0 28px;
+      font-size: 0.88rem;
+    }
+
+    .spec-table th {
+      background: rgba(30, 41, 59, 0.8);
+      padding: 10px 14px;
       text-align: left;
-    }
-
-    th {
-      background: rgba(31, 41, 55, 0.6);
-      padding: 12px 16px;
-      font-weight: 600;
       color: #fff;
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-weight: 600;
     }
 
-    td {
-      padding: 12px 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      color: #d1d5db;
+    .spec-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #cbd5e1;
     }
 
-    tr:last-child td {
-      border-bottom: none;
-    }
-
-    tr:hover td {
+    .spec-table tr:hover td {
       background: rgba(255, 255, 255, 0.02);
     }
 
-    /* Code Tags */
-    code {
-      font-family: var(--font-mono);
-      font-size: 0.82rem;
-      background: rgba(255, 255, 255, 0.06);
-      padding: 2px 6px;
-      border-radius: 4px;
-      color: var(--accent-cyan);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    pre {
-      background: #090d16;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: 16px;
-      overflow-x: auto;
-      font-family: var(--font-mono);
-      font-size: 0.85rem;
-      color: #e5e7eb;
-      margin: 16px 0;
-    }
-
-    /* Interactive Elements list */
-    .ui-element-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      background: rgba(6, 182, 212, 0.12);
-      color: var(--accent-cyan);
-      border: 1px solid rgba(6, 182, 212, 0.3);
-      margin-right: 6px;
+    .callout-box {
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      background: rgba(99, 102, 241, 0.08);
+      border-left: 4px solid #6366f1;
+      font-size: 0.92rem;
+      color: #e2e8f0;
     }
   </style>
 </head>
 <body>
 
-  <!-- Left Sidebar Navigation -->
-  <aside class="docs-sidebar">
-    <div class="docs-sidebar-header">
-      <i data-lucide="shield-alert" class="docs-logo-icon"></i>
-      <span class="docs-logo-title">Jungle Tools</span>
-      <span class="docs-badge">v1.0 Manual</span>
+  <!-- Sidebar Table of Contents -->
+  <aside class="docs-sidebar-nav">
+    <div class="docs-brand">
+      <i data-lucide="shield-alert" style="width: 28px; height: 28px; color: #6366f1;"></i>
+      <div>
+        <div style="font-weight: 700; font-family: 'Outfit'; font-size: 1.15rem; color: #fff;">Jungle Tools</div>
+        <div style="font-size: 0.72rem; color: #94a3b8;">공식 사용자 매뉴얼</div>
+      </div>
     </div>
 
-    <nav class="docs-nav">
-      <div class="docs-nav-group">
-        <div class="docs-nav-group-title">시작하기 (Getting Started)</div>
-        <div class="docs-nav-links">
-          <a href="#overview" class="docs-nav-link"><i data-lucide="info"></i> 시스템 아키텍처</a>
-          <a href="#global-ui" class="docs-nav-link"><i data-lucide="layout"></i> 공통 레이아웃 & UI</a>
-          <a href="#auth-flow" class="docs-nav-link"><i data-lucide="key"></i> 인증 및 세션 관리</a>
-        </div>
+    <nav class="docs-nav-menu">
+      <div class="docs-menu-group">
+        <div class="docs-menu-group-title">공통 가이드</div>
+        <a href="#sec-layout" class="docs-link active"><i data-lucide="layout"></i> 글로벌 UI 레이아웃</a>
+        <a href="#sec-auth" class="docs-link"><i data-lucide="key-round"></i> 로그인 & 인증 모달</a>
       </div>
 
-      <div class="docs-nav-group">
-        <div class="docs-nav-group-title">메뉴별 기능 매뉴얼</div>
-        <div class="docs-nav-links">
-          <a href="#view-home" class="docs-nav-link"><i data-lucide="home"></i> 1. 홈 대시보드</a>
-          <a href="#view-sg-dashboard" class="docs-nav-link"><i data-lucide="shield"></i> 2. 보안 그룹 관리</a>
-          <a href="#view-sg-logs" class="docs-nav-link"><i data-lucide="history"></i> 3. WORM 감사 로그</a>
-          <a href="#view-backup" class="docs-nav-link"><i data-lucide="hard-drive"></i> 4. 멀티 백업 관제</a>
-          <a href="#view-slack" class="docs-nav-link"><i data-lucide="message-square"></i> 5. Slack 알림 설정</a>
-          <a href="#view-email" class="docs-nav-link"><i data-lucide="mail"></i> 6. 이메일 알림 설정</a>
-        </div>
+      <div class="docs-menu-group">
+        <div class="docs-menu-group-title">메뉴별 화면 가이드</div>
+        <a href="#sec-home" class="docs-link"><i data-lucide="home"></i> 1. Home (통합 대시보드)</a>
+        <a href="#sec-sg-dashboard" class="docs-link"><i data-lucide="shield"></i> 2. SG Manage (대시보드)</a>
+        <a href="#sec-sg-logs" class="docs-link"><i data-lucide="history"></i> 3. SG Logs (감사 로그)</a>
+        <a href="#sec-backup" class="docs-link"><i data-lucide="hard-drive"></i> 4. Backup Monitor</a>
+        <a href="#sec-slack-webhook" class="docs-link"><i data-lucide="webhook"></i> 5. Slack 웹훅 설정</a>
+        <a href="#sec-slack-email" class="docs-link"><i data-lucide="mail"></i> 6. Slack Email 설정</a>
+        <a href="#sec-email-smtp" class="docs-link"><i data-lucide="server"></i> 7. Email SMTP 설정</a>
+        <a href="#sec-email-recipients" class="docs-link"><i data-lucide="users"></i> 8. Email 주소 등록</a>
       </div>
 
-      <div class="docs-nav-group">
-        <div class="docs-nav-group-title">운영 & 트러블슈팅</div>
-        <div class="docs-nav-links">
-          <a href="#workflows" class="docs-nav-link"><i data-lucide="play-circle"></i> 주요 운영 시나리오</a>
-          <a href="#troubleshooting" class="docs-nav-link"><i data-lucide="help-circle"></i> 자주 묻는 질문 (FAQ)</a>
-        </div>
+      <div class="docs-menu-group">
+        <div class="docs-menu-group-title">운영 & FAQ</div>
+        <a href="#sec-troubleshooting" class="docs-link"><i data-lucide="help-circle"></i> 자주 묻는 질문 (FAQ)</a>
       </div>
     </nav>
   </aside>
 
-  <!-- Main Content Area -->
-  <main class="docs-main">
+  <!-- Main Documentation Content -->
+  <main class="docs-content">
     
-    <!-- Hero Header -->
-    <header style="margin-bottom: 48px;">
-      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-        <span class="docs-badge">AWS Multi-Account Operations</span>
-        <span class="docs-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); border-color: rgba(16, 185, 129, 0.3);">Enterprise Ready</span>
-      </div>
-      <h1>Jungle Tools 종합 사용자 매뉴얼</h1>
-      <p class="lead-text">
-        다중 AWS 계정 환경에서 VPC 보안 그룹 제어, S3 Object Lock 불변 감사 로깅, EBS/EFS/RDS 백업 통합 관제 및 Slack/Email 알림 자동화를 제공하는 엔터프라이즈 클라우드 관리 콘솔 매뉴얼입니다.
+    <header style="margin-bottom: 40px;">
+      <h1 class="doc-h1">Jungle Tools 사용자 매뉴얼</h1>
+      <p class="doc-lead">
+        실제 Jungle Tools 콘솔 화면의 모든 UI 컴포넌트, 입력 필드, 제어 버튼 및 기능을 화면별로 100% 일치하도록 정리한 공식 매뉴얼입니다.
       </p>
     </header>
 
-    <!-- 1. Overview & Architecture -->
-    <section id="overview">
-      <h2><i data-lucide="layers"></i> 1. 시스템 아키텍처 및 보안 개요</h2>
+    <!-- SECTION: Global UI Layout -->
+    <section id="sec-layout" class="doc-section">
+      <h2 class="doc-h2"><i data-lucide="layout"></i> 글로벌 레이아웃 및 공통 UI 요소</h2>
       <p>
-        Jungle Tools는 <strong>허브(Hub) 계정</strong>과 <strong>멀티 스포크(Spoke) 계정(총 10개 계정)</strong>을 효율적이고 안전하게 제어하기 위해 <strong>BFF(Backend-for-Frontend) 세션 쿠키 인증 모델</strong> 및 <strong>서버리스 클라우드 아키텍처</strong>를 채택하였습니다.
+        모든 화면에 공통 적용되는 <strong>좌측 사이드바</strong>와 <strong>상단 헤더 바(Top Bar)</strong>의 구성 요소입니다.
       </p>
 
-      <div class="callout info">
-        <i data-lucide="shield-check" class="callout-icon"></i>
-        <div class="callout-content">
-          <strong>BFF HttpOnly 세션 쿠키 아키텍처</strong>
-          브라우저에 AWS 평문 자격 증명을 저장하지 않고, AWS STS 검증 후 발급되는 <code>HttpOnly; Secure; SameSite=None</code> 세션 쿠키(8시간 TTL)를 통해 모든 API 요청을 안전하게 인가합니다.
+      <!-- Live Interactive Layout Preview -->
+      <div class="live-preview-box">
+        <div class="live-preview-header">
+          <div class="live-preview-dots">
+            <div class="live-preview-dot" style="background: #ef4444;"></div>
+            <div class="live-preview-dot" style="background: #f59e0b;"></div>
+            <div class="live-preview-dot" style="background: #10b981;"></div>
+          </div>
+          <span>실제 사이드바 & 상단 헤더 UI 프리뷰</span>
+          <span>ap-northeast-2</span>
+        </div>
+        <div class="live-preview-body" style="display: flex; gap: 20px;">
+          
+          <!-- Sidebar Component Preview -->
+          <div style="width: 260px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px; flex-shrink: 0;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <i data-lucide="shield-alert" style="color: #6366f1; width: 20px; height: 20px;"></i>
+              <strong style="color: #fff; font-size: 0.95rem;">Jungle Tools</strong>
+              <span class="dev-branch-badge">develop</span>
+            </div>
+
+            <!-- Home Item -->
+            <div class="nav-item active" style="padding: 6px 10px; margin-bottom: 8px; font-size: 0.82rem;">
+              <i data-lucide="home" style="width: 14px; height: 14px;"></i>
+              <span>Home</span>
+            </div>
+
+            <!-- Target Account Selector Preview -->
+            <div class="sidebar-account-container" style="padding: 6px 8px; margin-bottom: 8px;">
+              <div class="sidebar-account-label" style="font-size: 0.65rem;">
+                <i data-lucide="layers" style="width: 11px; height: 11px;"></i>
+                <span>Target Account</span>
+              </div>
+              <div class="sidebar-account-select-wrapper">
+                <select class="sidebar-account-select" style="font-size: 0.75rem; padding: 4px 20px 4px 6px;">
+                  <option>Hub (l-iam-s2)</option>
+                  <option>l-ellotte-dev</option>
+                  <option>l-b2-dev</option>
+                  <option>l-cicd-s2</option>
+                </select>
+                <i data-lucide="chevron-down" class="select-chevron" style="width: 12px; height: 12px;"></i>
+              </div>
+            </div>
+
+            <div style="font-size: 0.75rem; color: #94a3b8; padding: 4px 8px;">
+              <div style="margin-bottom: 4px;"><i data-lucide="shield" style="width: 12px; height: 12px; vertical-align: middle;"></i> SG Manage</div>
+              <div style="margin-bottom: 4px;"><i data-lucide="hard-drive" style="width: 12px; height: 12px; vertical-align: middle;"></i> Backup Monitor</div>
+            </div>
+
+            <!-- Sidebar Footer Info Preview -->
+            <div class="sidebar-info-card" style="margin-top: 14px; padding: 6px 8px;">
+              <div class="sidebar-info-row">
+                <div class="sidebar-info-label" style="font-size: 0.62rem;"><i data-lucide="link-2" style="width: 10px; height: 10px;"></i> API Endpoint</div>
+                <span class="sidebar-info-val code-text" style="font-size: 0.68rem;">https://ln62bkjy16.execute-api...</span>
+              </div>
+              <div class="sidebar-info-row" style="margin-top: 4px;">
+                <div class="sidebar-info-label" style="font-size: 0.62rem;"><i data-lucide="shield-check" style="width: 10px; height: 10px;"></i> Role Name</div>
+                <span class="sidebar-info-val code-text" style="font-size: 0.68rem;">JungleToolsCrossAccountRole</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Bar Component Preview -->
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 14px;">
+            <div class="top-bar" style="position: static; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); padding: 12px 16px;">
+              <div class="breadcrumb" style="font-size: 0.85rem;">
+                <span style="color: #94a3b8;">SG Manage</span>
+                <span class="separator">/</span>
+                <span class="active">Dashboard</span>
+              </div>
+
+              <div class="api-config">
+                <div class="api-status-badge online" style="font-size: 0.75rem; padding: 3px 8px;">
+                  <span class="status-dot"></span>
+                  <span>Online</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 12px;">
+                  <span class="code-text" style="font-size: 0.72rem; color: #22d3ee;">IAM: B2_IA</span>
+                  <button class="btn btn-danger-outline" style="padding: 4px 8px; font-size: 0.72rem;"><i data-lucide="log-out" style="width: 11px; height: 11px;"></i> Disconnect</button>
+                </div>
+              </div>
+            </div>
+
+            <div style="background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 24px; text-align: center; color: #94a3b8; font-size: 0.85rem;">
+              선택된 메인 콘텐츠 화면 영역이 렌더링됩니다.
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <div class="docs-card">
-        <h3>주요 구성 컴포넌트</h3>
-        <ul>
-          <li><strong>프론트엔드 (S3 Static Website Hosting)</strong>: 별도의 무거운 프레임워크 없이 가볍고 빠른 반응형 웹 콘솔.</li>
-          <li><strong>API Gateway v2 (HTTP API)</strong>: Lambda Request Authorizer를 통해 비인가 요청을 게이트웨이 레벨에서 401 차단.</li>
-          <li><strong>BFF Handlers & Business Lambdas</strong>: STS 검증, 보안 그룹 CRUD, 백업 스캐너, 알림 발송 엔진.</li>
-          <li><strong>DynamoDB (UserSessionsTable & SgAuditLogs)</strong>: 256비트 세션 토큰 저장 및 실시간 감사 로그 인덱싱.</li>
-          <li><strong>S3 Object Lock Bucket (WORM)</strong>: <code>GOVERNANCE</code> 모드로 30일간 변조 및 삭제가 불가능한 불변 감사 로그 저장소.</li>
-        </ul>
-      </div>
+      <!-- Spec Table -->
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>구분</th>
+            <th>UI 요소 식별자</th>
+            <th>실제 화면 표시명 / 형태</th>
+            <th>기능 및 동작 설명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>사이드바</strong></td>
+            <td><span class="elem-tag">#app-logo-title</span></td>
+            <td><code>Jungle Tools (develop)</code></td>
+            <td>브랜드 로고 및 현재 Git 브랜치/커밋 뱃지 표시.</td>
+          </tr>
+          <tr>
+            <td><strong>사이드바</strong></td>
+            <td><span class="elem-tag">#nav-home</span></td>
+            <td><code>🏠 Home</code> 버튼</td>
+            <td>클릭 시 통합 인프라 및 보안 대시보드로 이동.</td>
+          </tr>
+          <tr>
+            <td><strong>사이드바</strong></td>
+            <td><span class="elem-tag input-tag">#target-account-select</span></td>
+            <td><code>Target Account</code> 드롭다운</td>
+            <td><code>Hub (l-iam-s2)</code>, <code>l-ellotte-dev</code> 등 관리할 대상 AWS 계정 즉시 전환.</td>
+          </tr>
+          <tr>
+            <td><strong>사이드바</strong></td>
+            <td><span class="elem-tag">#api-endpoint-display</span></td>
+            <td><code>API Endpoint</code> 뱃지</td>
+            <td>현재 연결된 API Gateway URL 출력.</td>
+          </tr>
+          <tr>
+            <td><strong>사이드바</strong></td>
+            <td><span class="elem-tag">#target-role-display</span></td>
+            <td><code>Role Name</code> 뱃지</td>
+            <td>크로스 어카운트 위임 역할(<code>JungleToolsCrossAccountRole</code>) 출력.</td>
+          </tr>
+          <tr>
+            <td><strong>상단 헤더</strong></td>
+            <td><span class="elem-tag">#breadcrumb-active</span></td>
+            <td><code>Home</code> / <code>SG Manage / Dashboard</code></td>
+            <td>현재 활성화된 화면의 위치 경로 동적 표기.</td>
+          </tr>
+          <tr>
+            <td><strong>상단 헤더</strong></td>
+            <td><span class="elem-tag badge-tag">#api-status</span></td>
+            <td><code>Online</code> (녹색 뱃지)</td>
+            <td>백엔드 API 및 BFF 세션 연결 상태 (Online / Expired / Disconnected).</td>
+          </tr>
+          <tr>
+            <td><strong>상단 헤더</strong></td>
+            <td><span class="elem-tag btn-tag">#btn-logout</span></td>
+            <td><code>Disconnect</code> 버튼</td>
+            <td>BFF 세션을 즉시 무효화하고 HttpOnly 쿠키를 삭제하며 로그아웃.</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
-    <!-- 2. Global Layout & UI Elements -->
-    <section id="global-ui">
-      <h2><i data-lucide="layout"></i> 2. 공통 레이아웃 및 글로벌 UI 요소</h2>
+    <!-- SECTION: Home View -->
+    <section id="sec-home" class="doc-section">
+      <h2 class="doc-h2"><i data-lucide="home"></i> 1. Home (통합 인프라 & 보안 대시보드)</h2>
       <p>
-        콘솔의 좌측 사이드바와 상단 헤더 바는 언제 어디서나 대상 계정을 변경하고 실시간 상태를 파악할 수 있도록 고정 배치되어 있습니다.
+        Jungle Tools 진입 시 나타나는 최상단 관제 화면으로, 보안 그룹 지표, 백업 관제 지표, 바로가기 배너를 한곳에 제공합니다.
       </p>
 
-      <div class="screenshot-container">
-        <img src="images/screen_home.jpg" alt="Jungle Tools 공통 레이아웃 미리보기">
-        <div class="screenshot-caption">
-          <i data-lucide="image"></i> Jungle Tools 글로벌 레이아웃 (좌측 사이드바 계정 셀렉터 + 상단 브레드크럼)
+      <!-- Live Home View Preview -->
+      <div class="live-preview-box">
+        <div class="live-preview-header">
+          <span>Home View Component Wireframe</span>
+          <span>#view-home</span>
+        </div>
+        <div class="live-preview-body">
+          <div class="view-header" style="margin-bottom: 16px;">
+            <div>
+              <h2 style="font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0;">AWS Infrastructure & Security Dashboard</h2>
+              <p style="font-size: 0.8rem; color: #94a3b8; margin: 0;">Unified real-time metrics for Security Groups, Firewall Rules, and Multi-Service Backups (EBS, EFS, RDS).</p>
+            </div>
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.78rem;"><i data-lucide="rotate-cw" style="width: 12px; height: 12px;"></i> Refresh Metrics</button>
+          </div>
+
+          <!-- SG Card -->
+          <div class="card" style="padding: 16px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <strong style="color: #fff; font-size: 0.9rem;"><i data-lucide="shield" style="width: 14px; height: 14px; color: #6366f1; vertical-align: middle;"></i> SG Manage (보안 그룹 및 방화벽)</strong>
+              <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">보안 그룹 관리 바로가기 →</button>
+            </div>
+            <div class="metrics-grid" style="margin: 0;">
+              <div class="metric-card" style="padding: 12px;">
+                <div class="metric-icon bg-indigo"><i data-lucide="network"></i></div>
+                <div class="metric-info"><span class="metric-label">Active VPCs</span><span class="metric-value">3</span></div>
+              </div>
+              <div class="metric-card" style="padding: 12px;">
+                <div class="metric-icon bg-cyan"><i data-lucide="shield"></i></div>
+                <div class="metric-info"><span class="metric-label">Total Security Groups</span><span class="metric-value">12</span></div>
+              </div>
+              <div class="metric-card" style="padding: 12px;">
+                <div class="metric-icon bg-purple"><i data-lucide="list-todo"></i></div>
+                <div class="metric-info"><span class="metric-label">Inbound Rules</span><span class="metric-value">48</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Backup Card -->
+          <div class="card" style="padding: 16px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <strong style="color: #fff; font-size: 0.9rem;"><i data-lucide="hard-drive" style="width: 14px; height: 14px; color: #06b6d4; vertical-align: middle;"></i> Backup Monitor (멀티 서비스 백업 관제)</strong>
+              <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">백업 관제 바로가기 →</button>
+            </div>
+            <div class="metrics-grid" style="grid-template-columns: repeat(4, 1fr); margin: 0;">
+              <div class="metric-card" style="padding: 12px;">
+                <div class="metric-icon bg-blue"><i data-lucide="layers"></i></div>
+                <div class="metric-info"><span class="metric-label">Total Resources</span><span class="metric-value">28</span></div>
+              </div>
+              <div class="metric-card" style="padding: 12px;">
+                <div class="metric-icon bg-green"><i data-lucide="check-circle-2"></i></div>
+                <div class="metric-info"><span class="metric-label">Healthy (<=7d)</span><span class="metric-value" style="color: #34d399;">26</span></div>
+              </div>
+              <div class="metric-card" style="padding: 12px;">
+                <div class="metric-icon bg-amber"><i data-lucide="alert-triangle"></i></div>
+                <div class="metric-info"><span class="metric-label">Failure/Warning</span><span class="metric-value" style="color: #fbbf24;">2</span></div>
+              </div>
+              <div class="metric-card" style="padding: 12px;">
+                <div class="metric-icon bg-rose"><i data-lucide="shield-alert"></i></div>
+                <div class="metric-info"><span class="metric-label">Unprotected</span><span class="metric-value" style="color: #f87171;">0</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Jump Banner -->
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px;"><i data-lucide="webhook" style="width: 12px; height: 12px;"></i> Slack 웹훅 설정 바로가기</button>
+            <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px;"><i data-lucide="users" style="width: 12px; height: 12px;"></i> Email 주소 등록 바로가기</button>
+            <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px;"><i data-lucide="history" style="width: 12px; height: 12px;"></i> 보안 변경 로그 바로가기</button>
+          </div>
         </div>
       </div>
 
-      <div class="docs-table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>UI 영역</th>
-              <th>주요 요소</th>
-              <th>기능 및 동작 설명</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><strong>사이드바 상단</strong></td>
-              <td><span class="ui-element-tag">Brand & Badge</span></td>
-              <td>Jungle Tools 브랜드 로고 및 개발 브랜치/커밋 해시 표시 (예: <code>develop@da31885</code>).</td>
-            </tr>
-            <tr>
-              <td><strong>사이드바 계정 카드</strong></td>
-              <td><span class="ui-element-tag">Target Account</span></td>
-              <td>Home 바로 아래 위치하며, <code>Hub (l-iam-s2)</code>, <code>l-ellotte-dev</code> 등 관리할 대상 AWS 계정을 즉시 전환.</td>
-            </tr>
-            <tr>
-              <td><strong>사이드바 하단</strong></td>
-              <td><span class="ui-element-tag">Footer Info</span></td>
-              <td>현재 연결된 백엔드 <code>API Endpoint</code> URL 및 위임 역할 <code>Role Name</code> 출력.</td>
-            </tr>
-            <tr>
-              <td><strong>상단 바 좌측</strong></td>
-              <td><span class="ui-element-tag">Breadcrumb</span></td>
-              <td>현재 페이지의 계층형 위치를 <code>Home</code>, <code>SG Manage / Dashboard</code> 등으로 동적 표시.</td>
-            </tr>
-            <tr>
-              <td><strong>상단 바 우측</strong></td>
-              <td><span class="ui-element-tag">API Status Badge</span></td>
-              <td><code>Online</code>(녹색), <code>Expired</code>(주황색), <code>Disconnected</code>(회색)으로 연결 상태 실시간 표시.</td>
-            </tr>
-            <tr>
-              <td><strong>상단 바 우측</strong></td>
-              <td><span class="ui-element-tag">Session Info & Logout</span></td>
-              <td>로그인된 IAM User 식별자 표시 및 세션 만료 시 <code>다시 로그인</code>, 수동 종료 <code>Disconnect</code> 버튼 제공.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>UI 요소 식별자</th>
+            <th>표시 이름</th>
+            <th>기능 설명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-refresh-home</span></td>
+            <td><code>Refresh Metrics</code> 버튼</td>
+            <td>전체 VPC 보안 그룹 지표 및 백업 스캔 지표를 실시간 다시 조회하여 갱신.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-home-goto-sg</span></td>
+            <td><code>보안 그룹 관리 바로가기</code></td>
+            <td>클릭 시 <code>SG Manage > Dashboard</code> 화면으로 즉시 전환.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-home-goto-backup</span></td>
+            <td><code>백업 관제 바로가기</code></td>
+            <td>클릭 시 <code>Backup Monitor > Dashboard</code> 화면으로 즉시 전환.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-home-goto-slack</span></td>
+            <td><code>Slack 웹훅 설정 바로가기</code></td>
+            <td>클릭 시 <code>Notification > Slack > 웹훅</code> 화면으로 전환.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-home-goto-email</span></td>
+            <td><code>Email 주소 등록 바로가기</code></td>
+            <td>클릭 시 <code>Notification > Email > 주소 등록</code> 화면으로 전환.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-home-goto-logs</span></td>
+            <td><code>보안 변경 로그 바로가기</code></td>
+            <td>클릭 시 <code>SG Manage > Logs</code> 감사 로그 화면으로 전환.</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
-    <!-- 3. Screen-by-Screen Manual -->
-    <section id="view-home">
-      <h2><i data-lucide="home"></i> 3.1 홈 대시보드 (Home)</h2>
+    <!-- SECTION: SG Manage Dashboard -->
+    <section id="sec-sg-dashboard" class="doc-section">
+      <h2 class="doc-h2"><i data-lucide="shield"></i> 2. SG Manage (보안 그룹 대시보드)</h2>
       <p>
-        전체 클라우드 인프라의 헬스 상태, 보안 그룹 규칙 수, 멀티 계정 백업 준수율을 종합 집계하여 보여주는 메인 화면입니다.
+        계정 내 VPC별 아코디언 목록을 확인하고, 보안 그룹 생성 및 인바운드/아웃바운드 방화벽 규칙을 웹에서 즉시 추가, 수정, 삭제하는 화면입니다.
       </p>
 
-      <div class="docs-card">
-        <h3>화면 주요 구성 요소</h3>
-        <ul>
-          <li><strong>메트릭스 카드 그리드</strong>: 활성 VPC 수, 보안 그룹 수, 등록된 인바운드/아웃바운드 규칙 총계, 보호 중인 백업 리소스 수.</li>
-          <li><strong>퀵 점프(Quick Jump) 배너</strong>: SG 대시보드, 백업 대시보드, 슬랙 웹훅 설정, 이메일 수신자 등록, 감사 로그로 즉시 이동하는 바로가기 카드.</li>
-          <li><strong>멀티 계정 백업 현황판</strong>: 10개 AWS 계정의 리소스 보호 현황과 마지막 스캔 시각을 실시간 테이블로 제공.</li>
-        </ul>
-      </div>
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>영역</th>
+            <th>UI 요소</th>
+            <th>설명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>상단 액션</td>
+            <td><span class="elem-tag btn-tag">#btn-open-create-sg</span></td>
+            <td><code>+ New Security Group</code> 버튼: 신규 보안 그룹 생성 모달(<code>#modal-create-sg</code>) 호출.</td>
+          </tr>
+          <tr>
+            <td>상단 액션</td>
+            <td><span class="elem-tag btn-tag">#btn-refresh-sgs</span></td>
+            <td><code>Refresh</code> 버튼: AWS EC2 API를 호출하여 최신 VPC 및 보안 그룹 목록 갱신.</td>
+          </tr>
+          <tr>
+            <td>VPC 탐색</td>
+            <td><span class="elem-tag input-tag">#sidebar-sg-search</span></td>
+            <td>보안 그룹 이름 또는 ID를 실시간 필터링하는 검색 입력창.</td>
+          </tr>
+          <tr>
+            <td>VPC 탐색</td>
+            <td><span class="elem-tag">#vpc-list</span></td>
+            <td>VPC별 아코디언 목록 컨테이너. VPC 클릭 시 내부 보안 그룹 카드가 펼쳐짐.</td>
+          </tr>
+          <tr>
+            <td>규칙 탭</td>
+            <td><span class="elem-tag">#tab-inbound</span> / <span class="elem-tag">#tab-outbound</span></td>
+            <td>인바운드 규칙 / 아웃바운드 규칙 탭 전환 (규칙 개수 뱃지 표시).</td>
+          </tr>
+          <tr>
+            <td>규칙 편집</td>
+            <td><span class="elem-tag btn-tag">#btn-add-inbound-rule</span></td>
+            <td><code>+ Add Rule</code> 버튼: 새 방화벽 규칙(Type, Port, CIDR, Description) 행 추가.</td>
+          </tr>
+          <tr>
+            <td>규칙 저장</td>
+            <td><span class="elem-tag btn-tag">#btn-save-rules</span></td>
+            <td><code>Save Changes</code> 버튼: 편집된 방화벽 규칙을 EC2에 즉시 일괄 반영하고 감사 로그 기록.</td>
+          </tr>
+          <tr>
+            <td>보안그룹 삭제</td>
+            <td><span class="elem-tag btn-tag">#btn-delete-sg</span></td>
+            <td>선택된 보안 그룹을 안전하게 삭제 (확인 팝업 후 실행).</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
-    <!-- 3.2 SG Manage Dashboard -->
-    <section id="view-sg-dashboard">
-      <h2><i data-lucide="shield"></i> 3.2 보안 그룹 관리 (SG Manage > Dashboard)</h2>
+    <!-- SECTION: SG Logs -->
+    <section id="sec-sg-logs" class="doc-section">
+      <h2 class="doc-h2"><i data-lucide="history"></i> 3. SG Logs (보안 감사 로그 & WORM 검증)</h2>
       <p>
-        계정 내 모든 VPC와 보안 그룹을 탐색하고, 인바운드/아웃바운드 방화벽 규칙을 웹상에서 간편하게 등록, 수정, 삭제하는 화면입니다.
+        보안 그룹의 <code>CREATE</code>, <code>UPDATE</code>, <code>DELETE</code> 변경 이력을 조회하며, <strong>S3 Object Lock 불변 저장소</strong>에 저장된 위치(<code>s3Location</code>)를 확인할 수 있습니다.
       </p>
 
-      <div class="screenshot-container">
-        <img src="images/screen_sg_dashboard.jpg" alt="보안 그룹 대시보드 화면">
-        <div class="screenshot-caption">
-          <i data-lucide="image"></i> SG Manage 대시보드 (VPC 아코디언 목록 + 인바운드/아웃바운드 룰 편집기)
-        </div>
-      </div>
-
-      <div class="docs-card">
-        <h3>주요 기능 및 화면 요소</h3>
-        <ol>
-          <li><span class="ui-element-tag">+ New Security Group</span>: 신규 보안 그룹 생성 팝업 모달을 호출합니다.</li>
-          <li><span class="ui-element-tag">VPC Accordion</span>: VPC별로 그룹화된 보안 그룹 목록을 아코디언 형태로 펼치거나 접을 수 있습니다.</li>
-          <li><span class="ui-element-tag">Rule Editor Tabs</span>: 인바운드(Inbound) 및 아웃바운드(Outbound) 규칙 테이블 탭 전환.</li>
-          <li><span class="ui-element-tag">Rule Table Columns</span>: Type(HTTPS, SSH, Custom), Protocol(TCP, UDP), Port Range, Source/Destination CIDR, Description.</li>
-          <li><span class="ui-element-tag">+ Add Rule & Save Changes</span>: 새로운 방화벽 규칙 행을 추가하고, 수정된 규칙을 AWS EC2에 즉시 일괄 커밋합니다.</li>
-        </ol>
-      </div>
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>UI 요소</th>
+            <th>표시 이름 / 식별자</th>
+            <th>기능 및 규정 준수 설명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="elem-tag badge-tag">#log-s3-bucket-name</span></td>
+            <td><code>WORM S3 Bucket Name</code></td>
+            <td>감사 로그 원본이 저장되는 암호화 전용 S3 버킷 명칭 표시.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag badge-tag">Object Lock Badge</span></td>
+            <td><code>GOVERNANCE Mode (30 Days)</code></td>
+            <td>S3 Object Lock 보존 모드가 활성화되어 있어 30일간 삭제/변조 불가함을 인증.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-refresh-logs</span></td>
+            <td><code>Refresh Logs</code> 버튼</td>
+            <td>최신 감사 로그 목록을 DynamoDB로부터 실시간 다시 조회.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag">#modal-log-detail</span></td>
+            <td><code>JSON Detail Modal</code></td>
+            <td>로그 행의 <code>View Details</code> 클릭 시 이전/이후 규칙 차이점(JSON Diff) 열람.</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
-    <!-- 3.3 SG Audit Logs -->
-    <section id="view-sg-logs">
-      <h2><i data-lucide="history"></i> 3.3 보안 그룹 감사 로그 (SG Manage > Logs)</h2>
+    <!-- SECTION: Backup Monitor -->
+    <section id="sec-backup" class="doc-section">
+      <h2 class="doc-h2"><i data-lucide="hard-drive"></i> 4. Backup Monitor (멀티 서비스 백업 관제)</h2>
       <p>
-        보안 그룹의 모든 생성(<code>CREATE</code>), 규칙 변경(<code>UPDATE</code>), 삭제(<code>DELETE</code>) 이력을 조회하고, WORM S3 Object Lock 불변 저장소와 대조 검증하는 컴플라이언스 화면입니다.
+        EBS 볼륨, EFS 파일 시스템, RDS 데이터베이스의 백업 상태를 판별하는 3대 서비스 탭을 제공합니다.
       </p>
 
-      <div class="screenshot-container">
-        <img src="images/screen_sg_logs.jpg" alt="보안 그룹 감사 로그 화면">
-        <div class="screenshot-caption">
-          <i data-lucide="image"></i> SG Audit Logs 화면 (WORM Object Lock GOVERNANCE 모드 뱃지 + JSON Diff 상세 모달)
-        </div>
-      </div>
-
-      <div class="callout success">
-        <i data-lucide="check-circle-2" class="callout-icon"></i>
-        <div class="callout-content">
-          <strong>WORM (Write Once Read Many) 컴플라이언스 준수</strong>
-          모든 감사 로그는 DynamoDB뿐만 아니라 S3 Object Lock 버킷에 암호화되어 아카이빙되며, 보존 기간(30일) 동안 AWS 루트 계정을 포함한 누구도 로그를 수정하거나 삭제할 수 없습니다.
-        </div>
-      </div>
-
-      <div class="docs-card">
-        <h3>필터 및 상세 보기 기능</h3>
-        <ul>
-          <li><strong>Action 필터</strong>: <code>CREATE</code>, <code>UPDATE</code>, <code>DELETE</code> 작업 유형별 필터링.</li>
-          <li><strong>SG ID 검색</strong>: 특정 보안 그룹 ID(<code>sg-xxxx</code>)에 대한 이력만 정밀 검색.</li>
-          <li><strong>View JSON 버튼</strong>: 변경 전/후 규칙 차이점(Diff), 클라이언트 IP, 사용자 IAM ARN을 포맷팅된 JSON으로 즉시 열람.</li>
-        </ul>
-      </div>
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>서비스 탭</th>
+            <th>식별자</th>
+            <th>스캔 대상 리소스 및 상태 판별</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>EBS 스냅샷</strong></td>
+            <td><span class="elem-tag">#tab-backup-ebs</span></td>
+            <td>EBS 볼륨 목록, 볼륨 크기, 최근 7일 이내 생성된 EBS 스냅샷 유무 판별.</td>
+          </tr>
+          <tr>
+            <td><strong>EFS 파일 시스템</strong></td>
+            <td><span class="elem-tag">#tab-backup-efs</span></td>
+            <td>EFS 파일 시스템, 자동 백업 정책(ENABLED/DISABLED), 복구 시점(Recovery Point) 확인.</td>
+          </tr>
+          <tr>
+            <td><strong>RDS 데이터베이스</strong></td>
+            <td><span class="elem-tag">#tab-backup-rds</span></td>
+            <td>RDS 인스턴스, DB 엔진, 수동/자동 스냅샷 현황 및 최신 복구 시점 점검.</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
-    <!-- 3.4 Backup Monitor -->
-    <section id="view-backup">
-      <h2><i data-lucide="hard-drive"></i> 3.4 멀티 백업 통합 관제 (Backup Monitor > Dashboard)</h2>
+    <!-- SECTION: Slack Webhook -->
+    <section id="sec-slack-webhook" class="doc-section">
+      <h2 class="doc-h2"><i data-lucide="webhook"></i> 5. Slack 웹훅 설정 (Notification > Slack > 웹훅)</h2>
       <p>
-        EBS 볼륨, EFS 파일 시스템, RDS 데이터베이스의 백업 상태를 실시간 스캔하여 스냅샷 보유 여부 및 준수율을 판별합니다.
+        다양한 Slack 채널로 일일 백업 보고서를 자동 발송하기 위해 N개의 Incoming Webhook을 관리합니다.
       </p>
 
-      <div class="docs-table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>백업 상태 (Status)</th>
-              <th>판별 기준 (Criteria)</th>
-              <th>UI 표기</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><strong>Healthy (정상)</strong></td>
-              <td>최근 7일 이내 성공적으로 생성된 유효 스냅샷 존재</td>
-              <td><span class="ui-element-tag" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); border-color: var(--accent-emerald);">PROTECTED</span></td>
-            </tr>
-            <tr>
-              <td><strong>Failure (실패/경고)</strong></td>
-              <td>스냅샷 생성이 실패했거나 8일 이상 경과된 오래된 백업만 존재</td>
-              <td><span class="ui-element-tag" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border-color: var(--accent-amber);">WARNING</span></td>
-            </tr>
-            <tr>
-              <td><strong>Unprotected (미보호)</strong></td>
-              <td>백업 정책이 비활성화되었거나 스냅샷이 전혀 존재하지 않음</td>
-              <td><span class="ui-element-tag" style="background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); border-color: var(--accent-rose);">UNPROTECTED</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>UI 요소</th>
+            <th>식별자</th>
+            <th>기능 설명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-open-add-webhook</span></td>
+            <td><code>+ Add Webhook</code> 버튼</td>
+            <td>웹훅 이름, URL, 메시지 포맷, 스케줄을 설정하는 신규 등록 모달(<code>#modal-webhook</code>) 호출.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-test-all-webhooks</span></td>
+            <td><code>Test All Webhooks</code> 버튼</td>
+            <td>등록되어 활성화된 모든 Slack 웹훅으로 테스트 메시지 일괄 발송.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag input-tag">#webhook-modal-url</span></td>
+            <td><code>Webhook URL</code> 입력</td>
+            <td><code>https://hooks.slack.com/services/...</code> 또는 <code>/workflows/...</code> 형식만 허용 (SSRF 검증).</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag input-tag">#webhook-modal-msgtype</span></td>
+            <td><code>Message Type</code> 선택</td>
+            <td><code>detailed</code> (Block Kit 상세 테이블) 또는 <code>simple</code> (컴팩트 텍스트 요약).</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
-    <!-- 3.5 Slack Webhooks -->
-    <section id="view-slack">
-      <h2><i data-lucide="message-square"></i> 3.5 Slack 웹훅 설정 (Notification > Slack > 웹훅)</h2>
+    <!-- SECTION: Email Settings -->
+    <section id="sec-email-recipients" class="doc-section">
+      <h2 class="doc-h2"><i data-lucide="users"></i> 8. Email 주소 등록 (Notification > Email > 주소 등록)</h2>
       <p>
-        다양한 업무 채널(DevOps, 보안, 관제팀)로 일일 백업 보고서를 전송하기 위해 <strong>다중 Slack Incoming Webhook</strong>을 관리합니다.
+        일일 백업 리포트를 수신할 담당자 이메일 목록을 관리하고, HTML 이메일 리포트를 화면에서 미리보기 및 즉시 발송합니다.
       </p>
 
-      <div class="screenshot-container">
-        <img src="images/screen_slack_webhook.jpg" alt="Slack 웹훅 관리 화면">
-        <div class="screenshot-caption">
-          <i data-lucide="image"></i> Slack Webhooks Management (다중 웹훅 카드 목록 + 신규 웹훅 등록 모달)
-        </div>
-      </div>
-
-      <div class="docs-card">
-        <h3>웹훅 등록 및 제어 가이드</h3>
-        <ul>
-          <li><span class="ui-element-tag">+ Add Webhook</span>: 신규 슬랙 웹훅 등록 팝업 호출.</li>
-          <li><span class="ui-element-tag">Webhook URL 검증</span>: <code>hooks.slack.com/services/...</code>, <code>/workflows/...</code> 정규식 화이트리스트 자동 검증 (SSRF 원천 차단).</li>
-          <li><span class="ui-element-tag">Message Type</span>: <code>detailed</code> (Block Kit 기반 리치 테이블 리포트) / <code>simple</code> (컴팩트 텍스트 요약).</li>
-          <li><span class="ui-element-tag">Schedule</span>: 매시간(Hourly), 매일 오전 9시(Daily 9AM), 또는 사용자 정의 Custom Cron 표현식.</li>
-          <li><span class="ui-element-tag">Test All Webhooks</span>: 활성화된 모든 Slack 채널로 테스트 메시지 동시 발송.</li>
-        </ul>
-      </div>
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>UI 요소</th>
+            <th>식별자</th>
+            <th>기능 설명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="elem-tag input-tag">#email-recipients-input</span></td>
+            <td>수신자 목록 텍스트 영역</td>
+            <td>쉼표(<code>,</code>), 세미콜론(<code>;</code>), 줄바꿈으로 구분된 다중 이메일 입력 (RFC 5322 검증).</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-save-recipients</span></td>
+            <td><code>Save Recipients</code> 버튼</td>
+            <td>검증된 이메일 수신자 목록을 DynamoDB <code>SlackConfig</code> 테이블에 저장.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-preview-email-report</span></td>
+            <td><code>Preview Report</code> 버튼</td>
+            <td>현재 시점의 10개 AWS 계정 백업 현황을 집계한 실제 HTML 이메일 리포트를 화면에 렌더링.</td>
+          </tr>
+          <tr>
+            <td><span class="elem-tag btn-tag">#btn-send-email-now</span></td>
+            <td><code>Send Email Now</code> 버튼</td>
+            <td>등록된 모든 수신자에게 백업 현황 리포트 즉시 전송.</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
-    <!-- 3.6 Email Notification -->
-    <section id="view-email">
-      <h2><i data-lucide="mail"></i> 3.6 이메일 알림 설정 (Notification > Email)</h2>
-      <p>
-        AWS SES 또는 사내 SMTP 메일 서버를 연동하고, 보고서를 수신할 담당자 이메일 목록을 관리합니다.
-      </p>
-
-      <div class="docs-card">
-        <h3>1) SMTP 메일 서버 설정 (`Notification > Email > SMTP`)</h3>
-        <p>SMTP Host, Port(587/465), SSL/TLS 보안 연결, 인증 계정을 설정하고 실시간 핸드셰이크 테스트를 수행합니다.</p>
-        
-        <h3 style="margin-top: 24px;">2) 주소 등록 & 실시간 리포트 미리보기 (`Notification > Email > 주소 등록`)</h3>
-        <ul>
-          <li><strong>다중 수신자 등록</strong>: 쉼표(<code>,</code>), 세미콜론(<code>;</code>), 줄바꿈으로 구분된 이메일 목록 일괄 등록 (RFC 5322 표준 유효성 검증).</li>
-          <li><strong>일일 리포트 미리보기 (`Preview Report`)</strong>: 발송될 실시간 HTML 백업 리포트를 화면에서 직접 확인.</li>
-          <li><strong>즉시 발송 (`Send Now`)</strong>: 등록된 모든 수신자에게 백업 현황 종합 보고서 즉시 전송.</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- 4. Workflows -->
-    <section id="workflows">
-      <h2><i data-lucide="play-circle"></i> 4. 주요 운영 시나리오 가이드</h2>
+    <!-- SECTION: FAQ & Troubleshooting -->
+    <section id="sec-troubleshooting" class="doc-section">
+      <h2 class="doc-h2"><i data-lucide="help-circle"></i> 자주 묻는 질문 (FAQ) & 트러블슈팅</h2>
       
-      <div class="docs-card">
-        <h3>시나리오 1: 신규 보안 그룹 생성 및 인바운드 방화벽 규칙 적용</h3>
-        <ol>
-          <li>좌측 사이드바에서 대상 계정(예: <code>l-ellotte-dev</code>)을 선택합니다.</li>
-          <li>사이드바에서 <code>SG Manage > Dashboard</code> 메뉴로 이동합니다.</li>
-          <li>상단의 <code>+ New Security Group</code> 버튼을 클릭하고 이름, 설명, 소속 VPC를 선택하여 생성합니다.</li>
-          <li>생성된 보안 그룹을 클릭한 후 <code>+ Add Rule</code>을 눌러 포트(예: <code>443</code>)와 Source CIDR(<code>0.0.0.0/0</code>)을 입력합니다.</li>
-          <li><code>Save Changes</code>를 클릭하여 EC2에 즉시 반영합니다.</li>
-        </ol>
-
-        <h3 style="margin-top: 24px;">시나리오 2: 감사 로그 확인 및 불변성 검증</h3>
-        <ol>
-          <li>사이드바에서 <code>SG Manage > Logs</code> 메뉴로 이동합니다.</li>
-          <li>방금 수행된 <code>CREATE</code> 및 <code>UPDATE</code> 작업 로그를 확인합니다.</li>
-          <li><code>View JSON</code>을 클릭하여 변경된 규칙의 Diff와 S3 WORM 경로(<code>s3://...</code>)를 확인합니다.</li>
-        </ol>
+      <div class="callout-box">
+        <strong style="color: #fff; font-size: 1rem; display: block; margin-bottom: 6px;">Q1. 로그인 시 "Failed to fetch" 오류가 발생합니다.</strong>
+        API Gateway CORS 정책에 <code>Access-Control-Allow-Credentials: true</code>가 누락되었거나 브라우저 캐시 문제일 수 있습니다. 브라우저에서 <code>Ctrl + F5</code>(강력 새로고침)를 눌러 최신 스크립트를 로드해 주세요.
       </div>
-    </section>
 
-    <!-- 5. Troubleshooting -->
-    <section id="troubleshooting">
-      <h2><i data-lucide="help-circle"></i> 5. 자주 묻는 질문 (FAQ) & 트러블슈팅</h2>
-      
-      <div class="docs-card">
-        <h3>Q1. 로그인 시 "Failed to fetch" 오류가 발생합니다.</h3>
-        <p>
-          API Gateway의 CORS 정책에 <code>Access-Control-Allow-Credentials: true</code>가 활성화되어 있어야 하며 프론트엔드 호스팅 도메인이 등록되어 있어야 합니다 (최신 배포에 적용 완료). 브라우저 캐시를 강력 새로고침(<code>Ctrl + F5</code>)해 주세요.
-        </p>
+      <div class="callout-box">
+        <strong style="color: #fff; font-size: 1rem; display: block; margin-bottom: 6px;">Q2. 8시간 후 화면을 클릭하니 "세션이 만료되었습니다" 알림이 발생합니다.</strong>
+        BFF 보안 정책에 따라 발급된 HttpOnly 세션 쿠키는 8시간 TTL을 가집니다. 상단 헤더의 <code>다시 로그인</code> 버튼을 클릭하여 자격 증명을 입력하면 작업 상태를 유지한 채 세션이 갱신됩니다.
+      </div>
 
-        <h3 style="margin-top: 20px;">Q2. 8시간 후 세션이 만료되었다는 알림이 나타납니다.</h3>
-        <p>
-          보안 강화를 위한 8시간 TTL 세션 만료 정책입니다. 상단 헤더 바의 <code>다시 로그인</code> 버튼을 클릭하여 자격 증명을 입력하면 작업 상태를 유지한 채 세션이 갱신됩니다.
-        </p>
-
-        <h3 style="margin-top: 20px;">Q3. 특정 스포크 계정의 리소스를 조회할 수 없습니다.</h3>
-        <p>
-          해당 스포크 계정에 <code>JungleToolsCrossAccountRole</code> IAM 역할이 생성되어 있는지 확인하세요. 스포크 계정에서 <code>spoke-account-template.yaml</code>을 배포하면 해결됩니다.
-        </p>
+      <div class="callout-box">
+        <strong style="color: #fff; font-size: 1rem; display: block; margin-bottom: 6px;">Q3. 특정 스포크 계정(예: l-ellotte-dev) 선택 시 보안 그룹 조회가 되지 않습니다.</strong>
+        해당 스포크 계정에 <code>JungleToolsCrossAccountRole</code> IAM 역할이 생성되어 있는지 확인하세요. 스포크 계정에서 <code>spoke-account-template.yaml</code> 템플릿을 배포하면 해결됩니다.
       </div>
     </section>
 
   </main>
 
   <script>
-    // Initialize Lucide Icons
     if (window.lucide) {
       lucide.createIcons();
     }
-
-    // Active link scrolling spy
-    const navLinks = document.querySelectorAll('.docs-nav-link');
-    window.addEventListener('scroll', () => {
-      let current = '';
-      const sections = document.querySelectorAll('section');
-      sections.forEach(section => {
-        const sectionTop = section.offsetTop - 120;
-        if (window.pageYOffset >= sectionTop) {
-          current = section.getAttribute('id');
-        }
-      });
-
-      navLinks.forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('href') === `#${current}`) {
-          link.classList.add('active');
-        }
-      });
-    });
   </script>
 </body>
 </html>
