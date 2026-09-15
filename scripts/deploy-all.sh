@@ -163,6 +163,16 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+echo -e "${CYAN}Running: aws s3 sync docs/ s3://$bucket_name/docs/${NC}"
+aws s3 sync "$ROOT_DIR/docs/" "s3://$bucket_name/docs/" \
+    --profile "$HUB_PROFILE" \
+    --region "$REGION"
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to sync docs to S3.${NC}"
+    exit 1
+fi
+
 # Summary
 echo -e "\n${CYAN}============================================================${NC}"
 echo -e "${GREEN}Deployment Completed Successfully!${NC}"
