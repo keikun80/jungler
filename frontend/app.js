@@ -31,7 +31,8 @@ const apiStatusText = document.getElementById('api-status-text');
 
 const navHome = document.getElementById('nav-home');
 const navSgDashboard = document.getElementById('nav-sg-dashboard') || document.getElementById('nav-dashboard');
-const navSgLogs = document.getElementById('nav-sg-logs') || document.getElementById('nav-logs');
+const navAuditLogs = document.getElementById('nav-audit-logs') || document.getElementById('nav-sg-logs') || document.getElementById('nav-logs');
+const navSgLogs = navAuditLogs;
 const navBackupDashboard = document.getElementById('nav-backup-dashboard') || document.getElementById('nav-backups');
 const navBackupSnapshotTracer = document.getElementById('nav-backup-snapshot-tracer');
 const navBackupAmiTracer = document.getElementById('nav-backup-ami-tracer');
@@ -43,7 +44,8 @@ const navNotiEmailRecipients = document.getElementById('nav-noti-email-recipient
 const viewHome = document.getElementById('view-home');
 const viewSgDashboard = document.getElementById('view-sg-dashboard') || document.getElementById('view-dashboard');
 const viewSgDetail = document.getElementById('view-sg-detail');
-const viewSgLogs = document.getElementById('view-sg-logs') || document.getElementById('view-logs');
+const viewAuditLogs = document.getElementById('view-sg-logs') || document.getElementById('view-logs') || document.getElementById('view-audit-logs');
+const viewSgLogs = viewAuditLogs;
 const viewBackupDashboard = document.getElementById('view-backup-dashboard') || document.getElementById('view-backups');
 const viewBackupSnapshotTracer = document.getElementById('view-backup-snapshot-tracer');
 const viewBackupAmiTracer = document.getElementById('view-backup-ami-tracer');
@@ -296,16 +298,16 @@ function setupEventListeners() {
   const btnHomeGotoLogs = document.getElementById('btn-home-goto-logs');
   if (btnHomeGotoLogs) {
     btnHomeGotoLogs.addEventListener('click', () => {
-      switchView('sg-logs');
+      switchView('audit-logs');
       fetchAuditLogs();
     });
   }
 
   // Navigation Tabs
   if (navSgDashboard) navSgDashboard.addEventListener('click', () => switchView('sg-dashboard'));
-  if (navSgLogs) {
-    navSgLogs.addEventListener('click', () => {
-      switchView('sg-logs');
+  if (navAuditLogs) {
+    navAuditLogs.addEventListener('click', () => {
+      switchView('audit-logs');
       fetchAuditLogs();
     });
   }
@@ -806,11 +808,11 @@ function switchView(viewName) {
       if (viewSgDashboard) viewSgDashboard.classList.add('active');
       if (parentBreadcrumb) parentBreadcrumb.textContent = 'SG Manage';
       if (activeBreadcrumb) activeBreadcrumb.textContent = 'Dashboard';
-    } else if (viewName === 'sg-logs' || viewName === 'logs') {
-      if (navSgLogs) navSgLogs.classList.add('active');
-      if (viewSgLogs) viewSgLogs.classList.add('active');
-      if (parentBreadcrumb) parentBreadcrumb.textContent = 'SG Manage';
-      if (activeBreadcrumb) activeBreadcrumb.textContent = 'Logs';
+    } else if (viewName === 'audit-logs' || viewName === 'sg-logs' || viewName === 'logs') {
+      if (navAuditLogs) navAuditLogs.classList.add('active');
+      if (viewAuditLogs) viewAuditLogs.classList.add('active');
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Audit Logs';
+      if (activeBreadcrumb) activeBreadcrumb.textContent = 'Audit Trail';
     } else if (viewName === 'backup-dashboard' || viewName === 'backups') {
       if (navBackupDashboard) navBackupDashboard.classList.add('active');
       if (viewBackupDashboard) viewBackupDashboard.classList.add('active');

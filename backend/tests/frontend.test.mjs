@@ -80,11 +80,11 @@ describe('Frontend UI Menu Navigation & Feature Tests (JSDOM)', () => {
     assert.equal(roleDisplay.textContent, 'JungleToolsCrossAccountRole', 'Role display should show default role');
   });
 
-  test('2. SG Manage Menu: Click Dashboard and Logs tabs', () => {
+  test('2. SG Manage & Top-level Audit Logs Menu: Click Dashboard and Audit Trail tabs', () => {
     const navSgDashboard = document.getElementById('nav-sg-dashboard');
-    const navSgLogs = document.getElementById('nav-sg-logs');
+    const navAuditLogs = document.getElementById('nav-audit-logs');
     const viewSgDashboard = document.getElementById('view-sg-dashboard');
-    const viewSgLogs = document.getElementById('view-sg-logs');
+    const viewAuditLogs = document.getElementById('view-sg-logs');
     const parentBreadcrumb = document.getElementById('breadcrumb-parent');
     const activeBreadcrumb = document.getElementById('breadcrumb-active');
 
@@ -94,11 +94,11 @@ describe('Frontend UI Menu Navigation & Feature Tests (JSDOM)', () => {
     assert.equal(parentBreadcrumb.textContent, 'SG Manage', 'Parent breadcrumb should be SG Manage');
     assert.equal(activeBreadcrumb.textContent, 'Dashboard', 'Active breadcrumb should be Dashboard');
 
-    // Click SG Logs
-    navSgLogs.click();
-    assert.ok(viewSgLogs.classList.contains('active'), 'view-sg-logs must be active');
-    assert.equal(parentBreadcrumb.textContent, 'SG Manage', 'Parent breadcrumb should be SG Manage');
-    assert.equal(activeBreadcrumb.textContent, 'Logs', 'Active breadcrumb should be Logs');
+    // Click Top-level Audit Logs
+    navAuditLogs.click();
+    assert.ok(viewAuditLogs.classList.contains('active'), 'view-sg-logs must be active');
+    assert.equal(parentBreadcrumb.textContent, 'Audit Logs', 'Parent breadcrumb should be Audit Logs');
+    assert.equal(activeBreadcrumb.textContent, 'Audit Trail', 'Active breadcrumb should be Audit Trail');
   });
 
   test('3. Backup Monitor Menu: Click Dashboard, Slack Webhook, Slack Email, SMTP, and Recipients', () => {

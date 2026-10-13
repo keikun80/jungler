@@ -62,10 +62,6 @@
               <i data-lucide="layout-dashboard"></i>
               <span>Dashboard</span>
             </button>
-            <button id="nav-sg-logs" class="nav-item sub-item">
-              <i data-lucide="history"></i>
-              <span>Logs</span>
-            </button>
           </div>
         </div>
 
@@ -131,6 +127,22 @@
               </div>
             </div>
 
+          </div>
+        </div>
+
+        <div class="sidebar-divider" style="margin: 8px 0;"></div>
+
+        <!-- 3. Audit Logs Group (Top-level Group) -->
+        <div class="nav-group">
+          <div class="nav-group-header">
+            <i data-lucide="clipboard-check" class="nav-group-icon"></i>
+            <span>Audit Logs</span>
+          </div>
+          <div class="nav-group-items">
+            <button id="nav-audit-logs" class="nav-item sub-item">
+              <i data-lucide="history"></i>
+              <span>Audit Trail</span>
+            </button>
           </div>
         </div>
       </nav>
@@ -335,11 +347,11 @@
 
           <div class="card" style="margin-bottom: 0; padding: 20px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-              <i data-lucide="history" style="width: 18px; height: 18px; color: var(--accent-cyan);"></i>
-              <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600;">보안 변경 감사 로그</h4>
+              <i data-lucide="clipboard-check" style="width: 18px; height: 18px; color: var(--accent-cyan);"></i>
+              <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600;">통합 감사 로그 (Audit Logs)</h4>
             </div>
             <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">
-              보안 그룹 생성, 삭제, 인바운드/아웃바운드 룰 수정 이력이 DynamoDB에 안전하게 기록 및 추적됩니다.
+              보안 그룹 변경, 고아 스냅샷 삭제, AMI Clean Deregister 등 전체 관리 작업의 행위자 및 상세 이력이 WORM(S3 Object Lock)에 안전하게 기록됩니다.
             </p>
             <div>
               <button id="btn-home-goto-logs" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;">
@@ -542,12 +554,12 @@
         </div>
       </section>
 
-      <!-- View 2: SG Manage - Logs (Audit Logs) -->
+      <!-- View 2: Unified Audit Trail (Audit Logs) -->
       <section id="view-sg-logs" class="content-view">
         <div class="view-header">
           <div>
-            <h2>Audit Logs</h2>
-            <p>Historical changes logged in DynamoDB for compliance auditing.</p>
+            <h2>Unified Audit Trail (통합 감사 로그)</h2>
+            <p>보안 그룹, EBS 스냅샷 및 AMI 변경 이력이 기록된 WORM(S3 Object Lock) 준수 감사 추적 로그입니다.</p>
           </div>
           <button id="btn-refresh-logs" class="btn btn-secondary">
             <i data-lucide="rotate-cw"></i>
