@@ -645,11 +645,6 @@ async function signedFetch(url, options = {}) {
     }
   }
 
-  // Inject actor ID header if logged-in session exists
-  if (sessionUser && (sessionUser.arn || sessionUser.userId)) {
-    options.headers['X-Actor-Id'] = sessionUser.arn || sessionUser.userId;
-  }
-
   const res = await fetch(url, options);
 
   if (res.status === 401 || res.status === 403) {
@@ -831,22 +826,22 @@ function switchView(viewName) {
     } else if (viewName === 'noti-slack-webhook' || viewName === 'slack-webhook') {
       if (navNotiSlackWebhook) navNotiSlackWebhook.classList.add('active');
       if (viewNotiSlackWebhook) viewNotiSlackWebhook.classList.add('active');
-      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor / Notification / Slack';
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Notification / Slack';
       if (activeBreadcrumb) activeBreadcrumb.textContent = '웹훅';
     } else if (viewName === 'noti-slack-email' || viewName === 'slack-email') {
       if (navNotiSlackEmail) navNotiSlackEmail.classList.add('active');
       if (viewNotiSlackEmail) viewNotiSlackEmail.classList.add('active');
-      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor / Notification / Slack';
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Notification / Slack';
       if (activeBreadcrumb) activeBreadcrumb.textContent = 'Email';
     } else if (viewName === 'noti-email-smtp') {
       if (navNotiEmailSmtp) navNotiEmailSmtp.classList.add('active');
       if (viewNotiEmailSmtp) viewNotiEmailSmtp.classList.add('active');
-      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor / Notification / Email';
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Notification / Email';
       if (activeBreadcrumb) activeBreadcrumb.textContent = 'SMTP';
     } else if (viewName === 'noti-email-recipients') {
       if (navNotiEmailRecipients) navNotiEmailRecipients.classList.add('active');
       if (viewNotiEmailRecipients) viewNotiEmailRecipients.classList.add('active');
-      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor / Notification / Email';
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Notification / Email';
       if (activeBreadcrumb) activeBreadcrumb.textContent = '주소 등록';
     } else if (viewName === 'detail') {
       if (viewSgDetail) viewSgDetail.classList.add('active');

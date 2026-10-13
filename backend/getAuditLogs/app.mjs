@@ -22,9 +22,9 @@ export const handler = async (event) => {
     // Sort items by timestamp descending (newest first)
     items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    return buildResponse(200, { logs: items });
+    return buildResponse(200, { logs: items }, {}, event);
   } catch (error) {
     console.error("Error fetching audit logs:", error);
-    return buildResponse(500, { message: "Failed to fetch audit logs", error: error.message });
+    return buildResponse(500, { message: "Failed to fetch audit logs", error: error.message }, {}, event);
   }
 };

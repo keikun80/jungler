@@ -126,25 +126,25 @@ describe('Frontend UI Menu Navigation & Feature Tests (JSDOM)', () => {
     // 2) Slack Webhook
     navNotiSlackWebhook.click();
     assert.ok(viewNotiSlackWebhook.classList.contains('active'), 'view-noti-slack-webhook must be active');
-    assert.equal(parentBreadcrumb.textContent, 'Backup Monitor / Notification / Slack');
+    assert.equal(parentBreadcrumb.textContent, 'Notification / Slack');
     assert.equal(activeBreadcrumb.textContent, '웹훅');
 
     // 3) Slack Email
     navNotiSlackEmail.click();
     assert.ok(viewNotiSlackEmail.classList.contains('active'), 'view-noti-slack-email must be active');
-    assert.equal(parentBreadcrumb.textContent, 'Backup Monitor / Notification / Slack');
+    assert.equal(parentBreadcrumb.textContent, 'Notification / Slack');
     assert.equal(activeBreadcrumb.textContent, 'Email');
 
     // 4) Email SMTP
     navNotiEmailSmtp.click();
     assert.ok(viewNotiEmailSmtp.classList.contains('active'), 'view-noti-email-smtp must be active');
-    assert.equal(parentBreadcrumb.textContent, 'Backup Monitor / Notification / Email');
+    assert.equal(parentBreadcrumb.textContent, 'Notification / Email');
     assert.equal(activeBreadcrumb.textContent, 'SMTP');
 
     // 5) Email Recipients
     navNotiEmailRecipients.click();
     assert.ok(viewNotiEmailRecipients.classList.contains('active'), 'view-noti-email-recipients must be active');
-    assert.equal(parentBreadcrumb.textContent, 'Backup Monitor / Notification / Email');
+    assert.equal(parentBreadcrumb.textContent, 'Notification / Email');
     assert.equal(activeBreadcrumb.textContent, '주소 등록');
   });
 

@@ -167,6 +167,7 @@ Resources:
           - Authorization
           - X-Target-Role-Arn
           - X-Target-Region
+          - X-Actor-Id
           - Cookie
         MaxAge: 600
 
