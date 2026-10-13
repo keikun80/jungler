@@ -216,7 +216,8 @@ export const handler = async (event) => {
           before: { inbound: oldInbound, outbound: oldOutbound },
           attempted: { inbound: newInbound, outbound: newOutbound }
         },
-        status: "FAILED"
+        status: "FAILED",
+        event
       });
 
       return buildResponse(500, { message: `보안 그룹 규칙 적용 실패 (기존 규칙으로 복구됨): ${applyErr.message}`, error: applyErr.message });
@@ -230,7 +231,8 @@ export const handler = async (event) => {
         before: { inbound: oldInbound, outbound: oldOutbound },
         after: { inbound: newInbound, outbound: newOutbound }
       },
-      status: "SUCCESS"
+      status: "SUCCESS",
+      event
     });
 
     return buildResponse(200, {
@@ -248,7 +250,8 @@ export const handler = async (event) => {
       sgId: sgId || "UNKNOWN",
       action: "UPDATE_RULES",
       details: { error: error.message },
-      status: "FAILED"
+      status: "FAILED",
+      event
     });
 
     return buildResponse(500, { message: "Failed to update security group rules", error: error.message });

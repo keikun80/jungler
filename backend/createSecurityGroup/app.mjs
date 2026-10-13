@@ -56,7 +56,8 @@ export const handler = async (event) => {
         vpcId,
         name: name || groupName
       },
-      status: "SUCCESS"
+      status: "SUCCESS",
+      event
     });
 
     return buildResponse(201, {
@@ -81,7 +82,8 @@ export const handler = async (event) => {
         error: error.message,
         requested: parsedBody
       },
-      status: "FAILED"
+      status: "FAILED",
+      event
     });
 
     return buildResponse(500, { message: "Failed to create security group", error: error.message });

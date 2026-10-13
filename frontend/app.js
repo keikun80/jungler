@@ -643,6 +643,11 @@ async function signedFetch(url, options = {}) {
     }
   }
 
+  // Inject actor ID header if logged-in session exists
+  if (sessionUser && (sessionUser.arn || sessionUser.userId)) {
+    options.headers['X-Actor-Id'] = sessionUser.arn || sessionUser.userId;
+  }
+
   const res = await fetch(url, options);
 
   if (res.status === 401 || res.status === 403) {
@@ -1598,7 +1603,7 @@ async function handleDeleteSecurityGroup() {
 async function fetchAuditLogs() {
   tableBodyLogs.innerHTML = `
     <tr>
-      <td colspan="6">
+      <td colspan="7">
         <div class="loading-spinner-wrapper">
           <div class="spinner"></div>
           <span class="loading-text">Loading audit trail logs...</span>
@@ -1620,7 +1625,7 @@ async function fetchAuditLogs() {
     showToast(`Failed to fetch logs: ${error.message}`, 'error');
     tableBodyLogs.innerHTML = `
       <tr>
-        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
           Failed to fetch audit logs.
         </td>
       </tr>
@@ -1635,7 +1640,7 @@ function renderAuditLogsTable(logs) {
   if (logs.length === 0) {
     tableBodyLogs.innerHTML = `
       <tr>
-        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
           No audit logs found in DynamoDB.
         </td>
       </tr>
@@ -1669,12 +1674,31 @@ function renderAuditLogsTable(logs) {
       }
     }
 
+    // Actor format: extract human-friendly username or role name from ARN/UserId
+    const actorRaw = log.actor || log.actorId || (typeof log.details === 'object' && log.details?.actor) || 'SYSTEM';
+    let actorDisplay = actorRaw;
+    if (actorRaw.includes(':user/')) {
+      actorDisplay = actorRaw.split(':user/')[1];
+    } else if (actorRaw.includes(':assumed-role/')) {
+      const parts = actorRaw.split(':assumed-role/')[1].split('/');
+      actorDisplay = parts[parts.length - 1] || parts[0];
+    } else if (actorRaw.startsWith('arn:aws:')) {
+      const parts = actorRaw.split('/');
+      actorDisplay = parts[parts.length - 1];
+    }
+
+    const actorBadge = `
+      <span class="badge" style="background: rgba(99, 102, 241, 0.12); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.25); font-size: 0.75rem; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;" title="${actorRaw}">
+        <i data-lucide="user" style="width: 11px; height: 11px; vertical-align: middle; margin-right: 3px;"></i>${actorDisplay}
+      </span>
+    `;
+
     const statusClass = log.status === 'SUCCESS' ? 'badge-success' : 'badge-failure';
     const statusBadge = `<span class="badge ${statusClass}">${log.status || 'UNKNOWN'}</span>`;
 
     const s3PathDisplay = log.s3Location ? `
       <div style="display: flex; align-items: center; gap: 6px;">
-        <span class="code-text" style="font-size: 0.72rem; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.08); padding: 3px 6px; border-radius: 4px;" title="${log.s3Location}">
+        <span class="code-text" style="font-size: 0.72rem; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.08); padding: 3px 6px; border-radius: 4px;" title="${log.s3Location}">
           ${log.s3Location}
         </span>
         <button class="btn-copy-s3-path" title="Copy S3 Path" data-s3-path="${log.s3Location}" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 3px 5px; border-radius: 4px; display: inline-flex; align-items: center;">
@@ -1685,6 +1709,7 @@ function renderAuditLogsTable(logs) {
 
     tr.innerHTML = `
       <td class="code-text" style="background: none; border: none; font-size: 0.8rem;">${formattedDate}</td>
+      <td>${actorBadge}</td>
       <td class="code-text" style="background: none; border: none; color: var(--accent-cyan); font-size: 0.8rem;">${log.sgId}</td>
       <td>${actionBadge}</td>
       <td>${statusBadge}</td>
@@ -1702,6 +1727,7 @@ function renderAuditLogsTable(logs) {
         const modalPayload = {
           sgId: log.sgId,
           timestamp: log.timestamp,
+          actor: actorRaw,
           action: log.action,
           status: log.status
         };
@@ -1735,9 +1761,7 @@ function renderAuditLogsTable(logs) {
     tableBodyLogs.appendChild(tr);
   });
 
-  if (window.lucide) {
-    lucide.createIcons();
-  }
+  lucide.createIcons();
 }
 
 // Backup Monitor Tab Switcher

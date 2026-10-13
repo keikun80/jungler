@@ -76,7 +76,8 @@ export const handler = async (event) => {
         allAssociatedSnapshots: snapshotIds,
         message: `AMI ${imageId} (${imageName}) was deregistered. ${deletedSnapshots.length} associated snapshot(s) deleted.`
       },
-      status: failedSnapshots.length > 0 ? "PARTIAL_SUCCESS" : "SUCCESS"
+      status: failedSnapshots.length > 0 ? "PARTIAL_SUCCESS" : "SUCCESS",
+      event
     });
 
     return buildResponse(200, {
@@ -103,7 +104,8 @@ export const handler = async (event) => {
         error: error.message,
         message: `Failed to deregister AMI ${imageId}`
       },
-      status: "FAILED"
+      status: "FAILED",
+      event
     });
 
     return buildResponse(500, { message: "Failed to deregister AMI", error: error.message });

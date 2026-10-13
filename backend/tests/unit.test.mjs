@@ -6,7 +6,8 @@ import {
   isValidSlackWebhookUrl,
   buildResponse,
   parseCookies,
-  isValidRoleArn
+  isValidRoleArn,
+  extractActor
 } from '../utils.mjs';
 
 describe('1. Email Validation (RFC 5322 Standard)', () => {
@@ -133,3 +134,49 @@ describe('5. Cross-Account IAM Security Pattern', () => {
     assert.equal(isValidRoleArn(undefined), false);
   });
 });
+
+describe('6. Actor Identification for Audit Logs', () => {
+  it('should extract actor from Lambda Authorizer context (BFF session)', () => {
+    const event = {
+      requestContext: {
+        authorizer: {
+          lambda: {
+            arn: 'arn:aws:iam::132949884230:user/admin',
+            userId: 'AIDA123456789',
+            account: '132949884230'
+          }
+        }
+      }
+    };
+    assert.equal(extractActor(event), 'arn:aws:iam::132949884230:user/admin');
+  });
+
+  it('should extract actor from IAM SigV4 authorizer context', () => {
+    const event = {
+      requestContext: {
+        authorizer: {
+          iam: {
+            callerArn: 'arn:aws:sts::132949884230:assumed-role/Operator/session1'
+          }
+        }
+      }
+    };
+    assert.equal(extractActor(event), 'arn:aws:sts::132949884230:assumed-role/Operator/session1');
+  });
+
+  it('should extract actor from X-Actor-Id header', () => {
+    const event = {
+      headers: {
+        'x-actor-id': 'arn:aws:iam::132949884230:user/deployer'
+      }
+    };
+    assert.equal(extractActor(event), 'arn:aws:iam::132949884230:user/deployer');
+  });
+
+  it('should fallback to SYSTEM when no actor info is available', () => {
+    assert.equal(extractActor({}), 'SYSTEM');
+    assert.equal(extractActor(null), 'SYSTEM');
+    assert.equal(extractActor(undefined), 'SYSTEM');
+  });
+});
+

@@ -32,7 +32,8 @@ export const handler = async (event) => {
         reason: "orphan",
         message: `Orphan snapshot ${snapshotId} (source volume: ${volumeId || "unknown"}) was deleted successfully.`
       },
-      status: "SUCCESS"
+      status: "SUCCESS",
+      event
     });
 
     return buildResponse(200, {
@@ -60,7 +61,8 @@ export const handler = async (event) => {
         error: error.message,
         message: `Failed to delete snapshot ${snapshotId}`
       },
-      status: "FAILED"
+      status: "FAILED",
+      event
     });
 
     return buildResponse(500, { message: "Failed to delete snapshot", error: error.message });

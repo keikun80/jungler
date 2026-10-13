@@ -24,7 +24,8 @@ export const handler = async (event) => {
       sgId,
       action: "DELETE",
       details: { message: `Security Group ${sgId} was deleted successfully.` },
-      status: "SUCCESS"
+      status: "SUCCESS",
+      event
     });
 
     return buildResponse(200, {
@@ -40,7 +41,8 @@ export const handler = async (event) => {
       sgId: sgId || "UNKNOWN",
       action: "DELETE",
       details: { error: error.message, message: `Failed to delete Security Group ${sgId || "UNKNOWN"}` },
-      status: "FAILED"
+      status: "FAILED",
+      event
     });
 
     return buildResponse(500, { message: "Failed to delete security group", error: error.message });

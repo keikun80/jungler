@@ -138,11 +138,56 @@ export function buildResponse(statusCode, body, customHeaders = {}, event = null
   };
 }
 
-export async function recordAuditLog(docClient, tableName, { sgId, action, details, status = "SUCCESS" }) {
+export function extractActor(event) {
+  if (!event) return "SYSTEM";
+
+  // 1. Check HTTP API v2 Lambda Authorizer context (BFF Session)
+  const lambdaCtx = event.requestContext?.authorizer?.lambda;
+  if (lambdaCtx) {
+    if (lambdaCtx.arn) return lambdaCtx.arn;
+    if (lambdaCtx.userId) return lambdaCtx.userId;
+    if (lambdaCtx.account) return `Account:${lambdaCtx.account}`;
+  }
+
+  // 2. Check IAM Authorizer context (SigV4 signed requests)
+  const iamCtx = event.requestContext?.authorizer?.iam;
+  if (iamCtx) {
+    if (iamCtx.callerArn) return iamCtx.callerArn;
+    if (iamCtx.userArn) return iamCtx.userArn;
+    if (iamCtx.userId) return iamCtx.userId;
+    if (iamCtx.cognitoIdentityId) return iamCtx.cognitoIdentityId;
+  }
+
+  // 3. Check API Gateway v1 / REST format identity
+  const identity = event.requestContext?.identity;
+  if (identity) {
+    if (identity.userArn) return identity.userArn;
+    if (identity.caller) return identity.caller;
+    if (identity.user) return identity.user;
+  }
+
+  // 4. Check client-supplied Actor headers from BFF
+  const actorHeader = event.headers?.["x-actor-id"] || event.headers?.["X-Actor-Id"] ||
+                      event.headers?.["x-actor-arn"] || event.headers?.["X-Actor-Arn"];
+  if (actorHeader && actorHeader.trim()) {
+    return actorHeader.trim();
+  }
+
+  return "SYSTEM";
+}
+
+export async function recordAuditLog(
+  docClient,
+  tableName,
+  { sgId, action, details, status = "SUCCESS", actor = null, actorId = null, event = null }
+) {
   const timestamp = new Date().toISOString();
   const safeSgId = sgId || "UNKNOWN";
-  const detailsObj = typeof details === "object" ? details : { raw: details || "" };
-  const detailsStr = typeof details === "object" ? JSON.stringify(details) : (details || "");
+  const finalActor = actor || actorId || (event ? extractActor(event) : null) || "SYSTEM";
+  const detailsObj = typeof details === "object"
+    ? { ...details, actor: finalActor }
+    : { raw: details || "", actor: finalActor };
+  const detailsStr = JSON.stringify(detailsObj);
 
   const auditBucket = process.env.AUDIT_LOG_BUCKET;
   let s3Key = null;
@@ -170,6 +215,8 @@ export async function recordAuditLog(docClient, tableName, { sgId, action, detai
         timestamp,
         action,
         status,
+        actor: finalActor,
+        actorId: finalActor,
         details: detailsStr
       };
       if (s3Location) {
@@ -197,6 +244,8 @@ export async function recordAuditLog(docClient, tableName, { sgId, action, detai
         timestamp,
         action,
         status,
+        actor: finalActor,
+        actorId: finalActor,
         details: detailsObj,
         s3Location,
         recordedAt: new Date().toISOString()
