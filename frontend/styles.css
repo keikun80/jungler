@@ -990,6 +990,10 @@ select option {
 .bg-indigo { background: linear-gradient(135deg, #6366f1, #4f46e5); }
 .bg-cyan { background: linear-gradient(135deg, #06b6d4, #0891b2); }
 .bg-purple { background: linear-gradient(135deg, #a855f7, #9333ea); }
+.bg-green { background: linear-gradient(135deg, #10b981, #059669); }
+.bg-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.bg-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.bg-blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
 
 .metric-info {
   display: flex;

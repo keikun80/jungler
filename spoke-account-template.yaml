@@ -44,6 +44,10 @@ Resources:
                   - ec2:DescribeSubnets
                   - ec2:DescribeSnapshots
                   - ec2:DescribeVolumes
+                  - ec2:DescribeImages
+                  - ec2:DescribeInstances
+                  - ec2:DescribeLaunchTemplates
+                  - ec2:DescribeLaunchTemplateVersions
                   - rds:DescribeDBInstances
                   - rds:DescribeDBSnapshots
                   - rds:DescribeDBClusters
@@ -76,6 +80,26 @@ Resources:
                 Resource:
                   - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*'
                   - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/*'
+
+        # 3. Snapshot & AMI Management Policy (Scoped to snapshots and AMIs)
+        - PolicyName: JungleToolsSnapshotManagementPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowOrphanSnapshotCleanup
+                Effect: Allow
+                Action:
+                  - ec2:DeleteSnapshot
+                Resource:
+                  - !Sub 'arn:aws:ec2:${AWS::Region}::snapshot/*'
+                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:snapshot/*'
+              - Sid: AllowAmiDeregistration
+                Effect: Allow
+                Action:
+                  - ec2:DeregisterImage
+                Resource:
+                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:image/*'
+                  - !Sub 'arn:aws:ec2:${AWS::Region}::image/*'
 
 Outputs:
   RoleArn:

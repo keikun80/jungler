@@ -82,6 +82,14 @@
               <i data-lucide="activity"></i>
               <span>Dashboard</span>
             </button>
+            <button id="nav-backup-snapshot-tracer" class="nav-item sub-item">
+              <i data-lucide="search"></i>
+              <span>Snapshot Tracer</span>
+            </button>
+            <button id="nav-backup-ami-tracer" class="nav-item sub-item">
+              <i data-lucide="package"></i>
+              <span>AMI Tracer</span>
+            </button>
 
             <!-- Nested Subgroup: Notification -->
             <div class="nav-nested-group">
@@ -697,6 +705,233 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </section>
+
+      <!-- View 3b: Backup Monitor - Snapshot Tracer -->
+      <section id="view-backup-snapshot-tracer" class="content-view">
+        <div class="view-header">
+          <div>
+            <h2>EBS Snapshot Tracer</h2>
+            <p>EBS 스냅샷과 원본 볼륨의 관계를 분석하여 고아 스냅샷(원본 볼륨 삭제됨)을 식별하고 정리합니다.</p>
+          </div>
+          <button id="btn-refresh-snapshot-tracer" class="btn btn-secondary">
+            <i data-lucide="rotate-cw"></i>
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        <!-- Summary Metrics -->
+        <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin-bottom: 24px;">
+          <!-- 1. Total Snapshots -->
+          <div class="metric-card">
+            <div class="metric-icon bg-indigo">
+              <i data-lucide="layers"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">Total Snapshots</span>
+              <span class="metric-value" id="tracer-metric-total">-</span>
+            </div>
+          </div>
+
+          <!-- 2. Total Storage (총 용량) -->
+          <div class="metric-card">
+            <div class="metric-icon bg-cyan">
+              <i data-lucide="hard-drive"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">Total Storage (총 용량)</span>
+              <span class="metric-value" id="tracer-metric-total-storage" style="color: var(--accent-cyan);">-</span>
+            </div>
+          </div>
+
+          <!-- 3. Monthly Cost (월간 비용) -->
+          <div class="metric-card">
+            <div class="metric-icon bg-purple">
+              <i data-lucide="dollar-sign"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">Monthly Cost (월간 비용)</span>
+              <span class="metric-value" id="tracer-metric-total-cost" style="color: #a855f7;">-</span>
+              <span style="font-size: 0.72rem; color: var(--text-muted);">$0.05/GiB-mo 기준</span>
+            </div>
+          </div>
+
+          <!-- 4. Orphaned (정리 대상 & 절감 가능 비용) -->
+          <div class="metric-card">
+            <div class="metric-icon bg-danger">
+              <i data-lucide="alert-triangle"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">Orphaned (정리 대상)</span>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <span class="metric-value" id="tracer-metric-orphaned" style="color: var(--danger);">-</span>
+                <span id="tracer-metric-orphaned-sub" style="font-size: 0.8rem; color: var(--danger); font-weight: 500;">-</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Volume Attached (볼륨 존재) -->
+          <div class="metric-card">
+            <div class="metric-icon bg-green">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">Volume Attached (볼륨 존재)</span>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <span class="metric-value" id="tracer-metric-protected" style="color: var(--success);">-</span>
+                <span id="tracer-metric-protected-sub" style="font-size: 0.8rem; color: var(--success); font-weight: 500;">-</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. AMI In-Use (이미지 사용 중) -->
+          <div class="metric-card">
+            <div class="metric-icon bg-warning">
+              <i data-lucide="package"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">AMI In-Use (이미지 사용 중)</span>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <span class="metric-value" id="tracer-metric-ami" style="color: var(--warning);">-</span>
+                <span id="tracer-metric-ami-sub" style="font-size: 0.8rem; color: var(--warning); font-weight: 500;">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Snapshot Tracer Table -->
+        <div class="logs-table-wrapper">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">Snapshot ID</th>
+                <th style="width: 14%;">Source Volume ID</th>
+                <th style="width: 13%;">Volume Name</th>
+                <th style="width: 14%;">AMI Association</th>
+                <th style="width: 14%;">Created</th>
+                <th style="width: 9%;">State</th>
+                <th style="width: 8%;">Size</th>
+                <th style="width: 13%;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-body-snapshot-tracer">
+              <!-- Dynamic Rows -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- View 3c: Backup Monitor - AMI Tracer -->
+      <section id="view-backup-ami-tracer" class="content-view">
+        <div class="view-header">
+          <div>
+            <h2>AMI Lifecycle Tracer</h2>
+            <p>계정 내 AMI의 인스턴스/런치 템플릿 사용 현황을 분석하고, 미사용 AMI 및 연결된 EBS 스냅샷을 원클릭(Clean Deregister)으로 안전하게 정리합니다.</p>
+          </div>
+          <button id="btn-refresh-ami-tracer" class="btn btn-secondary">
+            <i data-lucide="rotate-cw"></i>
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        <!-- Summary Metrics -->
+        <div class="metrics-grid" style="grid-template-columns: repeat(6, 1fr); margin-bottom: 24px;">
+          <!-- 1. Total AMIs -->
+          <div class="metric-card">
+            <div class="metric-icon bg-indigo">
+              <i data-lucide="layers"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">Total AMIs</span>
+              <span class="metric-value" id="ami-metric-total">-</span>
+            </div>
+          </div>
+
+          <!-- 2. Total Storage (총 용량) -->
+          <div class="metric-card">
+            <div class="metric-icon bg-cyan">
+              <i data-lucide="hard-drive"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">Total Storage (총 용량)</span>
+              <span class="metric-value" id="ami-metric-total-storage" style="color: var(--accent-cyan);">-</span>
+            </div>
+          </div>
+
+          <!-- 3. Monthly Cost (월간 비용) -->
+          <div class="metric-card">
+            <div class="metric-icon bg-purple">
+              <i data-lucide="dollar-sign"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">Monthly Cost (월간 비용)</span>
+              <span class="metric-value" id="ami-metric-total-cost" style="color: #a855f7;">-</span>
+              <span style="font-size: 0.72rem; color: var(--text-muted);">$0.05/GiB-mo 기준</span>
+            </div>
+          </div>
+
+          <!-- 4. Unused AMIs (정리 대상) -->
+          <div class="metric-card">
+            <div class="metric-icon bg-danger">
+              <i data-lucide="alert-triangle"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">Unused AMIs (정리 대상)</span>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <span class="metric-value" id="ami-metric-unused" style="color: var(--danger);">-</span>
+                <span id="ami-metric-unused-sub" style="font-size: 0.8rem; color: var(--danger); font-weight: 500;">-</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. In-Use AMIs (사용 중) -->
+          <div class="metric-card">
+            <div class="metric-icon bg-green">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">In-Use AMIs (사용 중)</span>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <span class="metric-value" id="ami-metric-inuse" style="color: var(--success);">-</span>
+                <span id="ami-metric-inuse-sub" style="font-size: 0.8rem; color: var(--success); font-weight: 500;">-</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Potential Savings (절감 가능액) -->
+          <div class="metric-card">
+            <div class="metric-icon bg-warning">
+              <i data-lucide="sparkles"></i>
+            </div>
+            <div class="metric-info">
+              <span class="metric-label">Potential Savings (절감 가능액)</span>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <span class="metric-value" id="ami-metric-savings" style="color: var(--warning);">-</span>
+              </div>
+              <span id="ami-metric-savings-sub" style="font-size: 0.72rem; color: var(--text-muted);">Unused 정리 시 절감</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- AMI Tracer Table -->
+        <div class="logs-table-wrapper">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">AMI ID</th>
+                <th style="width: 15%;">AMI Name</th>
+                <th style="width: 12%;">Created (Age)</th>
+                <th style="width: 16%;">Storage & Cost</th>
+                <th style="width: 14%;">Active Instances</th>
+                <th style="width: 13%;">Launch Templates</th>
+                <th style="width: 15%;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-body-ami-tracer">
+              <!-- Dynamic Rows -->
+            </tbody>
+          </table>
         </div>
       </section>
 

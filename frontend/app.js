@@ -33,6 +33,8 @@ const navHome = document.getElementById('nav-home');
 const navSgDashboard = document.getElementById('nav-sg-dashboard') || document.getElementById('nav-dashboard');
 const navSgLogs = document.getElementById('nav-sg-logs') || document.getElementById('nav-logs');
 const navBackupDashboard = document.getElementById('nav-backup-dashboard') || document.getElementById('nav-backups');
+const navBackupSnapshotTracer = document.getElementById('nav-backup-snapshot-tracer');
+const navBackupAmiTracer = document.getElementById('nav-backup-ami-tracer');
 const navNotiSlackWebhook = document.getElementById('nav-noti-slack-webhook') || document.getElementById('nav-slack-webhook');
 const navNotiSlackEmail = document.getElementById('nav-noti-slack-email') || document.getElementById('nav-slack-email');
 const navNotiEmailSmtp = document.getElementById('nav-noti-email-smtp');
@@ -43,6 +45,8 @@ const viewSgDashboard = document.getElementById('view-sg-dashboard') || document
 const viewSgDetail = document.getElementById('view-sg-detail');
 const viewSgLogs = document.getElementById('view-sg-logs') || document.getElementById('view-logs');
 const viewBackupDashboard = document.getElementById('view-backup-dashboard') || document.getElementById('view-backups');
+const viewBackupSnapshotTracer = document.getElementById('view-backup-snapshot-tracer');
+const viewBackupAmiTracer = document.getElementById('view-backup-ami-tracer');
 const viewNotiSlackWebhook = document.getElementById('view-noti-slack-webhook') || document.getElementById('view-slack-webhook');
 const viewNotiSlackEmail = document.getElementById('view-noti-slack-email') || document.getElementById('view-slack-email');
 const viewNotiEmailSmtp = document.getElementById('view-noti-email-smtp');
@@ -311,6 +315,18 @@ function setupEventListeners() {
       fetchAllBackupsData();
     });
   }
+  if (navBackupSnapshotTracer) {
+    navBackupSnapshotTracer.addEventListener('click', () => {
+      switchView('backup-snapshot-tracer');
+      fetchSnapshotTracerData();
+    });
+  }
+  if (navBackupAmiTracer) {
+    navBackupAmiTracer.addEventListener('click', () => {
+      switchView('backup-ami-tracer');
+      fetchAmiTracerData();
+    });
+  }
   if (navNotiSlackWebhook) {
     navNotiSlackWebhook.addEventListener('click', () => {
       switchView('noti-slack-webhook');
@@ -400,6 +416,22 @@ function setupEventListeners() {
   if (btnRefreshBackups) {
     btnRefreshBackups.addEventListener('click', () => {
       if (validateEndpoint() && validateAuth()) fetchAllBackupsData();
+    });
+  }
+
+  // Refresh Snapshot Tracer
+  const btnRefreshSnapshotTracer = document.getElementById('btn-refresh-snapshot-tracer');
+  if (btnRefreshSnapshotTracer) {
+    btnRefreshSnapshotTracer.addEventListener('click', () => {
+      if (validateEndpoint() && validateAuth()) fetchSnapshotTracerData();
+    });
+  }
+
+  // Refresh AMI Tracer
+  const btnRefreshAmiTracer = document.getElementById('btn-refresh-ami-tracer');
+  if (btnRefreshAmiTracer) {
+    btnRefreshAmiTracer.addEventListener('click', () => {
+      if (validateEndpoint() && validateAuth()) fetchAmiTracerData();
     });
   }
 
@@ -736,13 +768,13 @@ async function handleLogout() {
 // Switching View Management
 function switchView(viewName) {
   const allNavs = [
-    navHome, navSgDashboard, navSgLogs, navBackupDashboard,
+    navHome, navSgDashboard, navSgLogs, navBackupDashboard, navBackupSnapshotTracer, navBackupAmiTracer,
     navNotiSlackWebhook, navNotiSlackEmail, navNotiEmailSmtp, navNotiEmailRecipients
   ];
   allNavs.forEach(nav => { if (nav) nav.classList.remove('active'); });
 
   const allViews = [
-    viewHome, viewSgDashboard, viewSgDetail, viewSgLogs, viewBackupDashboard,
+    viewHome, viewSgDashboard, viewSgDetail, viewSgLogs, viewBackupDashboard, viewBackupSnapshotTracer, viewBackupAmiTracer,
     viewNotiSlackWebhook, viewNotiSlackEmail, viewNotiEmailSmtp, viewNotiEmailRecipients
   ];
   allViews.forEach(view => { if (view) view.classList.remove('active'); });
@@ -779,6 +811,16 @@ function switchView(viewName) {
       if (viewBackupDashboard) viewBackupDashboard.classList.add('active');
       if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor';
       if (activeBreadcrumb) activeBreadcrumb.textContent = 'Dashboard';
+    } else if (viewName === 'backup-snapshot-tracer') {
+      if (navBackupSnapshotTracer) navBackupSnapshotTracer.classList.add('active');
+      if (viewBackupSnapshotTracer) viewBackupSnapshotTracer.classList.add('active');
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor';
+      if (activeBreadcrumb) activeBreadcrumb.textContent = 'Snapshot Tracer';
+    } else if (viewName === 'backup-ami-tracer') {
+      if (navBackupAmiTracer) navBackupAmiTracer.classList.add('active');
+      if (viewBackupAmiTracer) viewBackupAmiTracer.classList.add('active');
+      if (parentBreadcrumb) parentBreadcrumb.textContent = 'Backup Monitor';
+      if (activeBreadcrumb) activeBreadcrumb.textContent = 'AMI Tracer';
     } else if (viewName === 'noti-slack-webhook' || viewName === 'slack-webhook') {
       if (navNotiSlackWebhook) navNotiSlackWebhook.classList.add('active');
       if (viewNotiSlackWebhook) viewNotiSlackWebhook.classList.add('active');
@@ -2867,3 +2909,452 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnSaveRecipientModal) btnSaveRecipientModal.addEventListener('click', saveRecipientModalSubmit);
   if (btnTestSendRecipients) btnTestSendRecipients.addEventListener('click', sendTestRecipientsReport);
 });
+
+// ============================================================
+// Snapshot Tracer — EBS orphan snapshot detection & deletion
+// ============================================================
+
+// Fetch Snapshot Tracer Data
+async function fetchSnapshotTracerData() {
+  if (!validateEndpoint() || !validateAuth()) return;
+
+  const tableBody = document.getElementById('table-body-snapshot-tracer');
+  if (tableBody)
+    tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 24px;">
+      <div class="spinner" style="display:inline-block; vertical-align:middle; margin-right:8px;"></div>
+      Scanning Snapshots &amp; Volumes...
+    </td></tr>`;
+
+  try {
+    const res = await signedFetch(`${apiEndpoint}/backups/snapshot-tracer`);
+    const data = await res.json();
+
+    if (data.error) {
+      if (tableBody)
+        tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--accent-orange); padding: 24px;">${data.error}</td></tr>`;
+    } else {
+      updateSnapshotTracerMetrics(data.summary);
+      renderSnapshotTracerTable(data.snapshots);
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (tableBody)
+      tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--danger); padding: 24px;">Error: ${err.message}</td></tr>`;
+  }
+}
+
+// Update Snapshot Tracer Metrics
+function updateSnapshotTracerMetrics(summary) {
+  if (!summary) return;
+  const elTotal = document.getElementById('tracer-metric-total');
+  const elTotalStorage = document.getElementById('tracer-metric-total-storage');
+  const elTotalCost = document.getElementById('tracer-metric-total-cost');
+  const elOrphaned = document.getElementById('tracer-metric-orphaned');
+  const elOrphanedSub = document.getElementById('tracer-metric-orphaned-sub');
+  const elProtected = document.getElementById('tracer-metric-protected');
+  const elProtectedSub = document.getElementById('tracer-metric-protected-sub');
+  const elAmi = document.getElementById('tracer-metric-ami');
+  const elAmiSub = document.getElementById('tracer-metric-ami-sub');
+
+  if (elTotal) elTotal.textContent = summary.totalSnapshots || 0;
+  if (elTotalStorage) elTotalStorage.textContent = `${(summary.totalStorageGiB || 0).toLocaleString()} GiB`;
+  if (elTotalCost) elTotalCost.textContent = `$${(summary.estimatedMonthlyCost || 0).toFixed(2)}/mo`;
+
+  if (elOrphaned) elOrphaned.textContent = summary.orphaned || 0;
+  if (elOrphanedSub) {
+    if (summary.orphaned > 0 && summary.orphanedStorageGiB) {
+      elOrphanedSub.textContent = `(${summary.orphanedStorageGiB.toLocaleString()} GiB · -$${(summary.orphanedMonthlyCost || 0).toFixed(2)}/월)`;
+    } else {
+      elOrphanedSub.textContent = `(0 GiB · $0.00)`;
+    }
+  }
+
+  if (elProtected) elProtected.textContent = (summary.volumeProtected !== undefined ? summary.volumeProtected : summary.protected) || 0;
+  if (elProtectedSub && summary.volumeProtectedStorageGiB !== undefined) {
+    elProtectedSub.textContent = `(${summary.volumeProtectedStorageGiB.toLocaleString()} GiB)`;
+  }
+
+  if (elAmi) elAmi.textContent = summary.amiProtected || 0;
+  if (elAmiSub && summary.amiProtectedStorageGiB !== undefined) {
+    elAmiSub.textContent = `(${summary.amiProtectedStorageGiB.toLocaleString()} GiB)`;
+  }
+}
+
+// Render Snapshot Tracer Table
+function renderSnapshotTracerTable(snapshots) {
+  const tableBody = document.getElementById('table-body-snapshot-tracer');
+  if (!tableBody) return;
+  tableBody.innerHTML = '';
+
+  if (!snapshots || snapshots.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:30px;">No snapshots found in the current region/account.</td></tr>`;
+    return;
+  }
+
+  snapshots.forEach(snap => {
+    const tr = document.createElement('tr');
+
+    const createdText = snap.startTime ? new Date(snap.startTime).toLocaleString() : 'N/A';
+    const sizeText = snap.volumeSize ? `${snap.volumeSize} GiB` : 'N/A';
+
+    let stateBadge = 'badge-unprotected';
+    if (snap.state === 'completed') stateBadge = 'badge-healthy';
+    else if (snap.state === 'error') stateBadge = 'badge-failure';
+    else if (snap.state === 'pending') stateBadge = 'badge-warning';
+
+    const volumeNameText = snap.volumeExists
+      ? `<strong>${snap.volumeName}</strong>`
+      : `<span style="color:var(--text-muted);">N/A (deleted)</span>`;
+
+    const amiText = snap.isAmiInUse && snap.inUseAmi
+      ? `<span class="code-text" style="font-size:0.75rem; color:var(--accent-cyan);" title="${snap.inUseAmi.imageName}">${snap.inUseAmi.imageId}</span>`
+      : `<span style="color:var(--text-muted); font-size:0.8rem;">None</span>`;
+
+    let actionsHtml = '';
+    if (snap.volumeExists) {
+      actionsHtml = `<span class="badge badge-healthy" title="Active source volume exists">Attached</span>`;
+    } else if (snap.isAmiInUse) {
+      const amiTip = snap.inUseAmi ? `In-use by AMI ${snap.inUseAmi.imageId} (${snap.inUseAmi.imageName}). Cannot delete without deregistering AMI.` : 'In-use by AMI';
+      actionsHtml = `<span class="badge badge-warning" title="${amiTip}" style="cursor:help;">
+           <i data-lucide="package" style="width:12px; height:12px; vertical-align:middle; margin-right:3px;"></i>AMI In-Use
+         </span>`;
+    } else {
+      actionsHtml = `<button class="btn btn-danger-outline btn-delete-snapshot"
+                             data-snapshot-id="${snap.snapshotId}"
+                             data-volume-id="${snap.volumeId}"
+                             data-volume-size="${snap.volumeSize || 0}"
+                             title="Delete orphan snapshot">
+           <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+           <span>Delete</span>
+         </button>`;
+    }
+
+    tr.innerHTML = `
+      <td class="code-text" style="font-size:0.8rem; background:none; border:none; color:var(--accent-cyan);">${snap.snapshotId}</td>
+      <td class="code-text" style="font-size:0.8rem; background:none; border:none; color:var(--accent-cyan);">${snap.volumeId || '<span style="color:var(--text-muted);">N/A</span>'}</td>
+      <td>${volumeNameText}</td>
+      <td>${amiText}</td>
+      <td style="font-size:0.82rem;">${createdText}</td>
+      <td><span class="badge ${stateBadge}">${snap.state || 'unknown'}</span></td>
+      <td>${sizeText}</td>
+      <td>${actionsHtml}</td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  // Attach delete handlers
+  tableBody.querySelectorAll('.btn-delete-snapshot').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const snapshotId = btn.dataset.snapshotId;
+      const volumeId = btn.dataset.volumeId;
+      const volumeSize = parseInt(btn.dataset.volumeSize || 0);
+      await handleDeleteSnapshot(snapshotId, volumeId, volumeSize, btn);
+    });
+  });
+
+  lucide.createIcons();
+}
+
+// Delete orphan snapshot handler
+async function handleDeleteSnapshot(snapshotId, volumeId, volumeSize, btnElement) {
+  const confirmed = confirm(`Delete orphan snapshot "${snapshotId}"?\nSource volume "${volumeId}" no longer exists.`);
+  if (!confirmed) return;
+
+  btnElement.disabled = true;
+  btnElement.innerHTML = '<div class="spinner" style="width:14px; height:14px; border-width:2px; display:inline-block; vertical-align:middle; margin-right:4px;"></div> Deleting...';
+
+  try {
+    const res = await signedFetch(`${apiEndpoint}/backups/snapshot-tracer/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ snapshotId, volumeId })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to delete snapshot');
+
+    showToast(`Snapshot ${snapshotId} deleted successfully.`, 'success');
+
+    // Remove row from table
+    const row = btnElement.closest('tr');
+    if (row) row.remove();
+
+    // Update metrics dynamically
+    const elOrphaned = document.getElementById('tracer-metric-orphaned');
+    const elTotal = document.getElementById('tracer-metric-total');
+    const elTotalStorage = document.getElementById('tracer-metric-total-storage');
+    const elTotalCost = document.getElementById('tracer-metric-total-cost');
+    const elOrphanedSub = document.getElementById('tracer-metric-orphaned-sub');
+
+    if (elOrphaned) elOrphaned.textContent = Math.max(0, parseInt(elOrphaned.textContent || 0) - 1);
+    if (elTotal) elTotal.textContent = Math.max(0, parseInt(elTotal.textContent || 0) - 1);
+
+    if (elTotalStorage && volumeSize) {
+      const currentStorage = parseInt(elTotalStorage.textContent.replace(/[^0-9]/g, '') || 0);
+      const newStorage = Math.max(0, currentStorage - volumeSize);
+      elTotalStorage.textContent = `${newStorage.toLocaleString()} GiB`;
+      if (elTotalCost) {
+        elTotalCost.textContent = `$${(newStorage * 0.05).toFixed(2)}/mo`;
+      }
+    }
+
+  } catch (error) {
+    showToast(error.message, 'error');
+    btnElement.disabled = false;
+    btnElement.innerHTML = '<i data-lucide="trash-2" style="width:14px; height:14px;"></i><span>Delete</span>';
+    lucide.createIcons();
+  }
+}
+
+// ==========================================
+// AMI Tracer — AMI Lifecycle & Clean Deregister
+// ==========================================
+
+async function fetchAmiTracerData() {
+  const tableBody = document.getElementById('table-body-ami-tracer');
+  if (tableBody) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">
+          <div class="spinner" style="margin: 0 auto 10px; width: 24px; height: 24px;"></div>
+          Scanning AMIs and mapping active instances and launch templates...
+        </td>
+      </tr>
+    `;
+  }
+
+  try {
+    const res = await signedFetch(`${apiEndpoint}/backups/ami-tracer`, { method: 'GET' });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to fetch AMI tracer data');
+    }
+
+    if (data.summary) {
+      updateAmiTracerMetrics(data.summary);
+      renderAmiTracerTable(data.amis);
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (tableBody)
+      tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--danger); padding: 24px;">Error: ${err.message}</td></tr>`;
+  }
+}
+
+function updateAmiTracerMetrics(summary) {
+  if (!summary) return;
+  const elTotal = document.getElementById('ami-metric-total');
+  const elTotalStorage = document.getElementById('ami-metric-total-storage');
+  const elTotalCost = document.getElementById('ami-metric-total-cost');
+  const elUnused = document.getElementById('ami-metric-unused');
+  const elUnusedSub = document.getElementById('ami-metric-unused-sub');
+  const elInUse = document.getElementById('ami-metric-inuse');
+  const elInUseSub = document.getElementById('ami-metric-inuse-sub');
+  const elSavings = document.getElementById('ami-metric-savings');
+  const elSavingsSub = document.getElementById('ami-metric-savings-sub');
+  const elStorage = document.getElementById('ami-metric-unused-storage');
+
+  const totalAmis = summary.totalAmis || 0;
+  const totalStorage = summary.totalStorageGiB !== undefined ? summary.totalStorageGiB : (summary.totalSnapshotStorage || 0);
+  const totalCost = summary.estimatedMonthlyCost !== undefined ? Number(summary.estimatedMonthlyCost).toFixed(2) : (totalStorage * 0.05).toFixed(2);
+  const unusedAmis = summary.unusedAmis || 0;
+  const unusedStorage = summary.unusedStorageGiB !== undefined ? summary.unusedStorageGiB : (summary.unusedSnapshotStorage || 0);
+  const unusedCost = summary.unusedMonthlyCost !== undefined ? Number(summary.unusedMonthlyCost).toFixed(2) : (unusedStorage * 0.05).toFixed(2);
+  const inUseAmis = summary.inUseAmis || 0;
+  const inUseStorage = summary.inUseStorageGiB !== undefined ? summary.inUseStorageGiB : Math.max(0, totalStorage - unusedStorage);
+  const inUseCost = summary.inUseMonthlyCost !== undefined ? Number(summary.inUseMonthlyCost).toFixed(2) : (inUseStorage * 0.05).toFixed(2);
+  const savings = summary.potentialMonthlySavings !== undefined ? Number(summary.potentialMonthlySavings).toFixed(2) : unusedCost;
+
+  if (elTotal) elTotal.textContent = totalAmis;
+  if (elTotalStorage) elTotalStorage.textContent = `${totalStorage} GiB`;
+  if (elTotalCost) elTotalCost.textContent = `$${totalCost}`;
+
+  if (elUnused) elUnused.textContent = unusedAmis;
+  if (elUnusedSub) elUnusedSub.textContent = `${unusedStorage} GiB (-$${unusedCost}/월)`;
+
+  if (elInUse) elInUse.textContent = inUseAmis;
+  if (elInUseSub) elInUseSub.textContent = `${inUseStorage} GiB ($${inUseCost}/월)`;
+
+  if (elSavings) elSavings.textContent = parseFloat(savings) > 0 ? `-$${savings}/월` : '$0.00/월';
+  if (elSavingsSub) elSavingsSub.textContent = `${unusedStorage} GiB 정리 시 절감`;
+
+  if (elStorage) elStorage.textContent = `${unusedStorage} GiB`;
+}
+
+function renderAmiTracerTable(amis) {
+  const tableBody = document.getElementById('table-body-ami-tracer');
+  if (!tableBody) return;
+  tableBody.innerHTML = '';
+
+  if (!amis || amis.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:30px;">No private AMIs found in the current region/account.</td></tr>`;
+    return;
+  }
+
+  amis.forEach(ami => {
+    const tr = document.createElement('tr');
+
+    const createdText = ami.creationDate ? new Date(ami.creationDate).toLocaleDateString() : 'N/A';
+    const ageBadge = ami.ageDays > 90
+      ? `<span class="badge badge-failure" style="margin-left:4px;">${ami.ageDays}d old</span>`
+      : `<span style="color:var(--text-muted); font-size:0.75rem; margin-left:4px;">(${ami.ageDays}d)</span>`;
+
+    // Snapshots breakdown & storage cost
+    const snapCount = ami.snapshotCount || 0;
+    const snapSize = ami.totalSnapshotSize || 0;
+    const amiCost = ami.estimatedMonthlyCost !== undefined ? Number(ami.estimatedMonthlyCost).toFixed(2) : (snapSize * 0.05).toFixed(2);
+    const snapshotsHtml = snapCount > 0
+      ? `<div><strong>${snapCount}</strong> snap (${snapSize} GiB)</div>
+         <div style="font-size:0.75rem; color:#a855f7; font-weight:500;">~$${amiCost}/월</div>`
+      : `<span style="color:var(--text-muted); font-size:0.8rem;">0 snap (0 GiB)</span>`;
+
+    // Instances using this AMI
+    let instancesHtml = '';
+    if (ami.inUseByInstances && ami.inUseByInstances.length > 0) {
+      const instBadges = ami.inUseByInstances.map(i =>
+        `<span class="badge badge-healthy" title="${i.instanceId} (${i.state})" style="font-size:0.75rem; margin-right:3px; margin-bottom:2px;">${i.name || i.instanceId}</span>`
+      ).join(' ');
+      instancesHtml = `<div style="max-height:48px; overflow-y:auto;">${instBadges}</div>`;
+    } else {
+      instancesHtml = `<span style="color:var(--text-muted); font-size:0.8rem;">0 instances</span>`;
+    }
+
+    // Launch templates using this AMI
+    let ltHtml = '';
+    if (ami.inUseByLaunchTemplates && ami.inUseByLaunchTemplates.length > 0) {
+      const ltBadges = ami.inUseByLaunchTemplates.map(t =>
+        `<span class="badge badge-warning" title="${t.templateId}" style="font-size:0.75rem; margin-right:3px; margin-bottom:2px;">${t.templateName || t.templateId}</span>`
+      ).join(' ');
+      ltHtml = `<div style="max-height:48px; overflow-y:auto;">${ltBadges}</div>`;
+    } else {
+      ltHtml = `<span style="color:var(--text-muted); font-size:0.8rem;">None</span>`;
+    }
+
+    // Actions
+    let actionsHtml = '';
+    if (!ami.isUnused) {
+      actionsHtml = `<span class="badge badge-healthy" title="In use by active instances or launch templates">In-Use Protected</span>`;
+    } else {
+      actionsHtml = `
+        <button class="btn btn-danger-outline btn-deregister-ami"
+                data-image-id="${ami.imageId}"
+                data-image-name="${ami.name}"
+                data-snapshot-count="${snapCount}"
+                data-snapshot-size="${snapSize}"
+                data-cost="${amiCost}"
+                title="Deregister AMI and delete associated snapshots to save ~$${amiCost}/mo">
+          <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+          <span>Clean Deregister</span>
+        </button>
+      `;
+    }
+
+    tr.innerHTML = `
+      <td class="code-text" style="font-size:0.8rem; background:none; border:none; color:var(--accent-cyan);">${ami.imageId}</td>
+      <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${ami.name}">
+        <strong>${ami.name}</strong>
+      </td>
+      <td style="font-size:0.82rem;">${createdText} ${ageBadge}</td>
+      <td style="font-size:0.82rem;">${snapshotsHtml}</td>
+      <td>${instancesHtml}</td>
+      <td>${ltHtml}</td>
+      <td>${actionsHtml}</td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  // Attach Clean Deregister handlers
+  tableBody.querySelectorAll('.btn-deregister-ami').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const imageId = btn.dataset.imageId;
+      const imageName = btn.dataset.imageName;
+      const snapCount = btn.dataset.snapshotCount;
+      const snapSize = btn.dataset.snapshotSize;
+      const cost = btn.dataset.cost;
+      await handleDeregisterAmi(imageId, imageName, snapCount, snapSize, cost, btn);
+    });
+  });
+
+  lucide.createIcons();
+}
+
+async function handleDeregisterAmi(imageId, imageName, snapCount, snapSize, cost, btnElement) {
+  const costNum = parseFloat(cost) || 0;
+  const costText = costNum > 0 ? `, 월 ~$${costNum.toFixed(2)} 절감` : '';
+  const confirmMsg =
+    `Deregister AMI "${imageName}" (${imageId})?\n\n` +
+    `Clean Deregister Option:\n` +
+    `- 연결된 스냅샷(${snapCount}개, ${snapSize} GiB${costText})이 영구 삭제되어 스토리지 비용이 절감됩니다.\n\n` +
+    `진행하시겠습니까?`;
+
+  const confirmed = confirm(confirmMsg);
+  if (!confirmed) return;
+
+  btnElement.disabled = true;
+  btnElement.innerHTML = '<div class="spinner" style="width:14px; height:14px; border-width:2px; display:inline-block; vertical-align:middle; margin-right:4px;"></div> Deregistering...';
+
+  try {
+    const res = await signedFetch(`${apiEndpoint}/backups/ami-tracer/deregister`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageId, deleteSnapshots: true })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to deregister AMI');
+
+    const deletedCount = data.deletedSnapshots?.length || 0;
+    showToast(`AMI ${imageId} deregistered and ${deletedCount} snapshot(s) cleaned up!`, 'success');
+
+    // Remove row
+    const row = btnElement.closest('tr');
+    if (row) row.remove();
+
+    // Dynamically update metrics
+    const elTotal = document.getElementById('ami-metric-total');
+    const elTotalStorage = document.getElementById('ami-metric-total-storage');
+    const elTotalCost = document.getElementById('ami-metric-total-cost');
+    const elUnused = document.getElementById('ami-metric-unused');
+    const elUnusedSub = document.getElementById('ami-metric-unused-sub');
+    const elSavings = document.getElementById('ami-metric-savings');
+    const elSavingsSub = document.getElementById('ami-metric-savings-sub');
+    const elOldStorage = document.getElementById('ami-metric-unused-storage');
+
+    const freedSize = parseInt(snapSize) || 0;
+    const freedCost = Number((freedSize * 0.05).toFixed(2));
+
+    if (elTotal) elTotal.textContent = Math.max(0, parseInt(elTotal.textContent) - 1);
+    if (elUnused) elUnused.textContent = Math.max(0, parseInt(elUnused.textContent) - 1);
+
+    if (elTotalStorage) {
+      const currentStorage = parseInt(elTotalStorage.textContent) || 0;
+      elTotalStorage.textContent = `${Math.max(0, currentStorage - freedSize)} GiB`;
+    }
+
+    if (elTotalCost) {
+      const currentCost = parseFloat(elTotalCost.textContent.replace('$', '')) || 0;
+      elTotalCost.textContent = `$${Math.max(0, currentCost - freedCost).toFixed(2)}`;
+    }
+
+    if (elUnusedSub) {
+      const match = elUnusedSub.textContent.match(/(\d+)\s*GiB/);
+      const currentUnusedStorage = match ? parseInt(match[1]) : 0;
+      const nextUnusedStorage = Math.max(0, currentUnusedStorage - freedSize);
+      const nextUnusedCost = Number((nextUnusedStorage * 0.05).toFixed(2));
+      elUnusedSub.textContent = `${nextUnusedStorage} GiB (-$${nextUnusedCost.toFixed(2)}/월)`;
+
+      if (elSavings) elSavings.textContent = nextUnusedCost > 0 ? `-$${nextUnusedCost.toFixed(2)}/월` : '$0.00/월';
+      if (elSavingsSub) elSavingsSub.textContent = `${nextUnusedStorage} GiB 정리 시 절감`;
+      if (elOldStorage) elOldStorage.textContent = `${nextUnusedStorage} GiB`;
+    }
+
+  } catch (error) {
+    showToast(error.message, 'error');
+    btnElement.disabled = false;
+    btnElement.innerHTML = '<i data-lucide="trash-2" style="width:14px; height:14px;"></i><span>Clean Deregister</span>';
+    lucide.createIcons();
+  }
+}

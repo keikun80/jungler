@@ -395,6 +395,123 @@ Resources:
                 - sts:AssumeRole
               Resource: "arn:aws:iam::*:role/JungleToolsCrossAccountRole"
 
+  # 5a1. Get Snapshot Tracer Lambda Function (orphan snapshot detection)
+  GetSnapshotTracerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: getSnapshotTracer/app.handler
+      Timeout: 60
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SgHttpApi
+            Path: /backups/snapshot-tracer
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ec2:DescribeVolumes
+                - ec2:DescribeSnapshots
+                - ec2:DescribeImages
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: "arn:aws:iam::*:role/JungleToolsCrossAccountRole"
+
+  # 5a2. Delete Orphan Snapshot Lambda Function
+  DeleteOrphanSnapshotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: deleteOrphanSnapshot/app.handler
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SgHttpApi
+            Path: /backups/snapshot-tracer/delete
+            Method: POST
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SgAuditLogsTable
+        - S3CrudPolicy:
+            BucketName: !Ref SgAuditLogsBucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ec2:DeleteSnapshot
+                - ec2:DescribeVolumes
+                - ec2:DescribeSnapshots
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: "arn:aws:iam::*:role/JungleToolsCrossAccountRole"
+
+  # 5a3. Get AMI Tracer Lambda Function (AMI lifecycle & unused detection)
+  GetAmiTracerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: getAmiTracer/app.handler
+      Timeout: 60
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SgHttpApi
+            Path: /backups/ami-tracer
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ec2:DescribeImages
+                - ec2:DescribeInstances
+                - ec2:DescribeLaunchTemplates
+                - ec2:DescribeLaunchTemplateVersions
+                - ec2:DescribeSnapshots
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: "arn:aws:iam::*:role/JungleToolsCrossAccountRole"
+
+  # 5a4. Deregister AMI Lambda Function (Clean Deregister with snapshot cleanup)
+  DeregisterAmiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: deregisterAmi/app.handler
+      Timeout: 60
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref SgHttpApi
+            Path: /backups/ami-tracer/deregister
+            Method: POST
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SgAuditLogsTable
+        - S3CrudPolicy:
+            BucketName: !Ref SgAuditLogsBucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ec2:DescribeImages
+                - ec2:DeregisterImage
+                - ec2:DeleteSnapshot
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: "arn:aws:iam::*:role/JungleToolsCrossAccountRole"
+
   # 5b. Get EFS Backups Lambda Function
   GetEfsBackupsFunction:
     Type: AWS::Serverless::Function

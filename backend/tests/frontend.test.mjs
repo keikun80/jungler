@@ -211,4 +211,48 @@ describe('Frontend UI Menu Navigation & Feature Tests (JSDOM)', () => {
     btnCloseWebhookModal.click();
     assert.ok(!modalWebhook.classList.contains('open'), 'Add Webhook Modal should close');
   });
+
+  test('7. AMI Lifecycle Tracer: Storage & Cost metrics and table rendering', () => {
+    const elTotal = document.getElementById('ami-metric-total');
+    const elTotalStorage = document.getElementById('ami-metric-total-storage');
+    const elTotalCost = document.getElementById('ami-metric-total-cost');
+    const elUnused = document.getElementById('ami-metric-unused');
+    const elUnusedSub = document.getElementById('ami-metric-unused-sub');
+    const elInUse = document.getElementById('ami-metric-inuse');
+    const elInUseSub = document.getElementById('ami-metric-inuse-sub');
+    const elSavings = document.getElementById('ami-metric-savings');
+
+    assert.ok(elTotal, 'Total AMIs metric element must exist');
+    assert.ok(elTotalStorage, 'Total Storage metric element must exist');
+    assert.ok(elTotalCost, 'Total Cost metric element must exist');
+    assert.ok(elUnused, 'Unused AMIs metric element must exist');
+    assert.ok(elUnusedSub, 'Unused sub element must exist');
+    assert.ok(elInUse, 'In-use AMIs metric element must exist');
+    assert.ok(elInUseSub, 'In-use sub element must exist');
+    assert.ok(elSavings, 'Savings metric element must exist');
+
+    // Test updateAmiTracerMetrics helper function directly inside window
+    window.updateAmiTracerMetrics({
+      totalAmis: 5,
+      unusedAmis: 2,
+      inUseAmis: 3,
+      totalStorageGiB: 100,
+      unusedStorageGiB: 40,
+      inUseStorageGiB: 60,
+      estimatedMonthlyCost: 5.0,
+      unusedMonthlyCost: 2.0,
+      inUseMonthlyCost: 3.0,
+      potentialMonthlySavings: 2.0
+    });
+
+    assert.equal(elTotal.textContent, '5');
+    assert.equal(elTotalStorage.textContent, '100 GiB');
+    assert.equal(elTotalCost.textContent, '$5.00');
+    assert.equal(elUnused.textContent, '2');
+    assert.equal(elUnusedSub.textContent, '40 GiB (-$2.00/월)');
+    assert.equal(elInUse.textContent, '3');
+    assert.equal(elInUseSub.textContent, '60 GiB ($3.00/월)');
+    assert.equal(elSavings.textContent, '-$2.00/월');
+  });
 });
+
