@@ -9,6 +9,7 @@ import {
   isValidRoleArn,
   extractActor
 } from '../utils.mjs';
+import { parseEniResource } from '../getSecurityGroupResources/app.mjs';
 
 describe('1. Email Validation (RFC 5322 Standard)', () => {
   it('should accept valid standard email addresses', () => {
@@ -179,4 +180,117 @@ describe('6. Actor Identification for Audit Logs', () => {
     assert.equal(extractActor(undefined), 'SYSTEM');
   });
 });
+
+describe('7. Security Group Connected Resources (ENI Parser)', () => {
+  it('should correctly classify EC2 Instance ENI with tag Name', () => {
+    const eni = {
+      NetworkInterfaceId: 'eni-0123456789abcdef0',
+      Description: 'Primary network interface',
+      InterfaceType: 'interface',
+      Status: 'in-use',
+      PrivateIpAddress: '10.0.1.50',
+      SubnetId: 'subnet-0123',
+      VpcId: 'vpc-0123',
+      Attachment: {
+        InstanceId: 'i-0abcdef1234567890'
+      }
+    };
+    const instanceMap = {
+      'i-0abcdef1234567890': {
+        InstanceId: 'i-0abcdef1234567890',
+        InstanceType: 't3.medium',
+        State: { Name: 'running' },
+        Tags: [{ Key: 'Name', Value: 'prod-api-server' }]
+      }
+    };
+    const parsed = parseEniResource(eni, instanceMap);
+    assert.equal(parsed.resourceType, 'EC2');
+    assert.equal(parsed.resourceId, 'i-0abcdef1234567890');
+    assert.equal(parsed.resourceName, 'prod-api-server');
+    assert.equal(parsed.privateIp, '10.0.1.50');
+    assert.equal(parsed.status, 'in-use');
+  });
+
+  it('should correctly classify Application Load Balancer (ALB)', () => {
+    const eni = {
+      NetworkInterfaceId: 'eni-0234567890abcdef1',
+      Description: 'ELB app/my-prod-alb/1234567890abcdef',
+      InterfaceType: 'interface',
+      Status: 'in-use',
+      PrivateIpAddress: '10.0.1.100'
+    };
+    const parsed = parseEniResource(eni);
+    assert.equal(parsed.resourceType, 'ALB');
+    assert.equal(parsed.resourceName, 'my-prod-alb');
+    assert.equal(parsed.icon, 'network');
+  });
+
+  it('should correctly classify Network Load Balancer (NLB)', () => {
+    const eni = {
+      NetworkInterfaceId: 'eni-0345678901abcdef2',
+      Description: 'ELB net/my-prod-nlb/9876543210fedcba',
+      InterfaceType: 'network_load_balancer',
+      Status: 'in-use',
+      PrivateIpAddress: '10.0.2.100'
+    };
+    const parsed = parseEniResource(eni);
+    assert.equal(parsed.resourceType, 'NLB');
+    assert.equal(parsed.resourceName, 'my-prod-nlb');
+  });
+
+  it('should correctly classify RDS Database ENI', () => {
+    const eni = {
+      NetworkInterfaceId: 'eni-0456789012abcdef3',
+      Description: 'RDSNetworkInterface',
+      InterfaceType: 'interface',
+      Status: 'in-use',
+      PrivateIpAddress: '10.0.3.50'
+    };
+    const parsed = parseEniResource(eni);
+    assert.equal(parsed.resourceType, 'RDS');
+    assert.equal(parsed.icon, 'database');
+  });
+
+  it('should correctly classify AWS Lambda VPC ENI', () => {
+    const eni = {
+      NetworkInterfaceId: 'eni-0567890123abcdef4',
+      Description: 'AWS Lambda VPC ENI-4a7b8c9d-1234-5678-90ab-cdef12345678',
+      InterfaceType: 'lambda',
+      Status: 'in-use',
+      PrivateIpAddress: '10.0.4.20'
+    };
+    const parsed = parseEniResource(eni);
+    assert.equal(parsed.resourceType, 'Lambda');
+    assert.equal(parsed.icon, 'zap');
+  });
+
+  it('should correctly classify VPC Endpoint (vpce-...) ENI', () => {
+    const eni = {
+      NetworkInterfaceId: 'eni-0678901234abcdef5',
+      Description: 'VPC Endpoint Interface vpce-0123456789abcdef0',
+      InterfaceType: 'vpc_endpoint',
+      Status: 'in-use',
+      PrivateIpAddress: '10.0.5.10'
+    };
+    const parsed = parseEniResource(eni);
+    assert.equal(parsed.resourceType, 'VPCEndpoint');
+    assert.equal(parsed.resourceId, 'vpce-0123456789abcdef0');
+    assert.equal(parsed.icon, 'plug');
+  });
+
+  it('should fallback gracefully for generic Network Interfaces', () => {
+    const eni = {
+      NetworkInterfaceId: 'eni-0789012345abcdef6',
+      Description: 'Custom appliance interface',
+      InterfaceType: 'interface',
+      Status: 'in-use',
+      PrivateIpAddress: '10.0.6.99'
+    };
+    const parsed = parseEniResource(eni);
+    assert.equal(parsed.resourceType, 'ENI');
+    assert.equal(parsed.resourceId, 'eni-0789012345abcdef6');
+    assert.equal(parsed.resourceName, 'Custom appliance interface');
+  });
+});
+
 

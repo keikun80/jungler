@@ -74,17 +74,44 @@ const detailSgName = document.getElementById('detail-sg-name');
 const detailSgId = document.getElementById('detail-sg-id');
 const detailSgDesc = document.getElementById('detail-sg-desc');
 const detailSgVpc = document.getElementById('detail-sg-vpc');
+const detailSgUsageBadge = document.getElementById('detail-sg-usage-badge');
 const btnDeleteSg = document.getElementById('btn-delete-sg');
 
 const tabInbound = document.getElementById('tab-inbound');
 const tabOutbound = document.getElementById('tab-outbound');
+const tabResources = document.getElementById('tab-resources');
 const paneInbound = document.getElementById('pane-inbound');
 const paneOutbound = document.getElementById('pane-outbound');
+const paneResources = document.getElementById('pane-resources');
 const countInbound = document.getElementById('count-inbound');
 const countOutbound = document.getElementById('count-outbound');
+const countResources = document.getElementById('count-resources');
+const countReferencedRules = document.getElementById('count-referenced-rules');
 
 const tableBodyInbound = document.getElementById('table-body-inbound');
 const tableBodyOutbound = document.getElementById('table-body-outbound');
+const tableBodyResources = document.getElementById('table-body-resources');
+const tableBodyReferencedRules = document.getElementById('table-body-referenced-rules');
+const btnRefreshSgResources = document.getElementById('btn-refresh-sg-resources');
+const resourcesLoading = document.getElementById('resources-loading');
+const resourcesEmptyAlert = document.getElementById('resources-empty-alert');
+const resourcesTableContainer = document.getElementById('resources-table-container');
+const referencedRulesContainer = document.getElementById('referenced-rules-container');
+
+// Inspection Log Elements
+const resourcesLogCard = document.getElementById('resources-log-card');
+const headerToggleInspectionLog = document.getElementById('header-toggle-inspection-log');
+const btnToggleInspectionLog = document.getElementById('btn-toggle-inspection-log');
+const textToggleInspectionLog = document.getElementById('text-toggle-inspection-log');
+const iconToggleInspectionLog = document.getElementById('icon-toggle-inspection-log');
+const inspectionLogStatusBadge = document.getElementById('inspection-log-status-badge');
+const inspectionLogBody = document.getElementById('inspection-log-body');
+const inspectionErrorBox = document.getElementById('inspection-error-box');
+const inspectionErrorTitle = document.getElementById('inspection-error-title');
+const inspectionErrorDesc = document.getElementById('inspection-error-desc');
+const inspectionErrorTip = document.getElementById('inspection-error-tip');
+const inspectionLogTerminal = document.getElementById('inspection-log-terminal');
+
 const btnAddInbound = document.getElementById('btn-add-inbound-rule');
 const btnAddOutbound = document.getElementById('btn-add-outbound-rule');
 
@@ -477,9 +504,33 @@ function setupEventListeners() {
     });
   }
 
-  // Rule detail tab navigation
+  // Rule & Resources detail tab navigation
   if (tabInbound) tabInbound.addEventListener('click', () => switchRulesTab('inbound'));
   if (tabOutbound) tabOutbound.addEventListener('click', () => switchRulesTab('outbound'));
+  if (tabResources) tabResources.addEventListener('click', () => switchRulesTab('resources'));
+  if (btnRefreshSgResources) {
+    btnRefreshSgResources.addEventListener('click', () => {
+      if (selectedSg) fetchAndRenderSecurityGroupResources(selectedSg.groupId);
+    });
+  }
+
+  // Inspection Log Toggles & Clickable Badge
+  if (headerToggleInspectionLog) headerToggleInspectionLog.addEventListener('click', toggleInspectionLogs);
+  if (btnToggleInspectionLog) {
+    btnToggleInspectionLog.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleInspectionLogs();
+    });
+  }
+  if (detailSgUsageBadge) {
+    detailSgUsageBadge.addEventListener('click', () => {
+      switchRulesTab('resources');
+      showInspectionLogs(true);
+      if (resourcesLogCard) {
+        resourcesLogCard.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  }
 
   // Modify Rules
   if (btnAddInbound) btnAddInbound.addEventListener('click', () => addRuleRow('inbound'));
@@ -852,18 +903,30 @@ function switchView(viewName) {
 }
 
 
-// Switching Rules Tab Pane
+// Switching Rules & Resources Tab Pane
 function switchRulesTab(tabType) {
+  if (tabInbound) tabInbound.classList.remove('active');
+  if (tabOutbound) tabOutbound.classList.remove('active');
+  if (tabResources) tabResources.classList.remove('active');
+  if (paneInbound) paneInbound.classList.remove('active');
+  if (paneOutbound) paneOutbound.classList.remove('active');
+  if (paneResources) paneResources.classList.remove('active');
+
+  const stickyBar = document.querySelector('.actions-sticky-bar');
+
   if (tabType === 'inbound') {
-    tabInbound.classList.add('active');
-    tabOutbound.classList.remove('active');
-    paneInbound.classList.add('active');
-    paneOutbound.classList.remove('active');
-  } else {
-    tabOutbound.classList.add('active');
-    tabInbound.classList.remove('active');
-    paneOutbound.classList.add('active');
-    paneInbound.classList.remove('active');
+    if (tabInbound) tabInbound.classList.add('active');
+    if (paneInbound) paneInbound.classList.add('active');
+    if (stickyBar) stickyBar.style.display = '';
+  } else if (tabType === 'outbound') {
+    if (tabOutbound) tabOutbound.classList.add('active');
+    if (paneOutbound) paneOutbound.classList.add('active');
+    if (stickyBar) stickyBar.style.display = '';
+  } else if (tabType === 'resources') {
+    if (tabResources) tabResources.classList.add('active');
+    if (paneResources) paneResources.classList.add('active');
+    // Hide rules modifications bar when on resources view
+    if (stickyBar) stickyBar.style.display = 'none';
   }
 }
 
@@ -1208,6 +1271,300 @@ function selectSecurityGroup(sgId) {
 
   renderRulesTables();
   switchRulesTab('inbound');
+
+  // Asynchronously fetch connected resources & rule references for selected SG
+  fetchAndRenderSecurityGroupResources(selectedSg.groupId);
+}
+
+// Toggle and control inspection logs visibility
+function showInspectionLogs(expand) {
+  if (!inspectionLogBody) return;
+  if (expand) {
+    inspectionLogBody.style.display = 'block';
+    if (textToggleInspectionLog) textToggleInspectionLog.textContent = 'Hide Logs';
+    if (iconToggleInspectionLog) iconToggleInspectionLog.setAttribute('data-lucide', 'chevron-up');
+  } else {
+    inspectionLogBody.style.display = 'none';
+    if (textToggleInspectionLog) textToggleInspectionLog.textContent = 'Show Logs';
+    if (iconToggleInspectionLog) iconToggleInspectionLog.setAttribute('data-lucide', 'chevron-down');
+  }
+  if (window.lucide) lucide.createIcons();
+}
+
+function toggleInspectionLogs() {
+  if (!inspectionLogBody) return;
+  const isHidden = inspectionLogBody.style.display === 'none';
+  showInspectionLogs(isHidden);
+}
+
+// Render formatted terminal log lines with color coding
+function renderTerminalLogs(logs) {
+  if (!inspectionLogTerminal) return;
+  if (!Array.isArray(logs) || logs.length === 0) {
+    inspectionLogTerminal.innerHTML = '<span style="color:var(--text-muted);">No logs recorded.</span>';
+    return;
+  }
+
+  const html = logs.map(line => {
+    const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (line.includes('[ERROR]')) {
+      return `<div class="log-line-error">${escaped}</div>`;
+    } else if (line.includes('[WARN]')) {
+      return `<div class="log-line-warn">${escaped}</div>`;
+    } else if (line.includes('[INFO]')) {
+      return `<div class="log-line-info">${escaped}</div>`;
+    }
+    return `<div>${escaped}</div>`;
+  }).join('');
+
+  inspectionLogTerminal.innerHTML = html;
+}
+
+// Fetch and render connected AWS resources and referencing SG rules
+async function fetchAndRenderSecurityGroupResources(sgId) {
+  if (!sgId) return;
+
+  // Reset loading state
+  if (detailSgUsageBadge) {
+    detailSgUsageBadge.style.display = 'inline-flex';
+    detailSgUsageBadge.className = 'badge badge-update';
+    detailSgUsageBadge.innerHTML = '<span class="spinner" style="width:10px;height:10px;border-width:1.5px;margin-right:5px;display:inline-block;"></span> Inspecting...';
+    detailSgUsageBadge.title = 'Inspecting attached resources...';
+  }
+  if (countResources) countResources.textContent = '...';
+  if (resourcesLoading) resourcesLoading.style.display = 'block';
+  if (resourcesEmptyAlert) resourcesEmptyAlert.style.display = 'none';
+  if (resourcesTableContainer) resourcesTableContainer.style.display = 'none';
+  if (referencedRulesContainer) referencedRulesContainer.style.display = 'none';
+  if (tableBodyResources) tableBodyResources.innerHTML = '';
+  if (tableBodyReferencedRules) tableBodyReferencedRules.innerHTML = '';
+  if (inspectionErrorBox) inspectionErrorBox.style.display = 'none';
+  if (inspectionLogStatusBadge) {
+    inspectionLogStatusBadge.className = 'badge badge-update';
+    inspectionLogStatusBadge.textContent = 'Running';
+  }
+  if (inspectionLogTerminal) {
+    renderTerminalLogs([`[${new Date().toISOString()}] [INFO] Starting resource inspection for Security Group: ${sgId}...`]);
+  }
+
+  try {
+    let res = null;
+    let data = null;
+    try {
+      res = await signedFetch(`${apiEndpoint}/security-groups/${sgId}/resources`, { method: 'GET' });
+      data = await res.json();
+    } catch (fetchErr) {
+      data = { message: fetchErr.message, error: fetchErr.message };
+    }
+
+    // Guard: Ensure user hasn't switched to another SG while fetching
+    if (!selectedSg || selectedSg.groupId !== sgId) return;
+
+    if (resourcesLoading) resourcesLoading.style.display = 'none';
+
+    // Handle Failure (e.g. 403 Forbidden, 500 Internal Error)
+    if (!res || !res.ok) {
+      const errorMsg = data?.error || data?.message || (res ? `HTTP Error ${res.status}` : 'Network error');
+      const logs = data?.logs || [
+        `[${new Date().toISOString()}] [ERROR] Request failed: ${errorMsg}`
+      ];
+
+      if (countResources) countResources.textContent = '!';
+      if (inspectionLogStatusBadge) {
+        inspectionLogStatusBadge.className = 'badge badge-failure';
+        inspectionLogStatusBadge.textContent = 'Failed';
+      }
+
+      if (detailSgUsageBadge) {
+        detailSgUsageBadge.className = 'badge badge-warning badge-clickable';
+        detailSgUsageBadge.innerHTML = '<i data-lucide="alert-triangle" style="width:12px;height:12px;margin-right:4px;"></i> Inspection Failed (로그 보기)';
+        detailSgUsageBadge.title = 'Click to view execution error log';
+      }
+
+      // Display Error Details Callout
+      if (inspectionErrorBox) {
+        inspectionErrorBox.style.display = 'block';
+        if (inspectionErrorTitle) {
+          inspectionErrorTitle.textContent = `Inspection Failed: ${data?.errorCode || 'Access / Query Error'}`;
+        }
+        if (inspectionErrorDesc) {
+          inspectionErrorDesc.textContent = errorMsg;
+        }
+        if (inspectionErrorTip) {
+          if (errorMsg.includes('DescribeNetworkInterfaces') || errorMsg.includes('UnauthorizedOperation')) {
+            inspectionErrorTip.style.display = 'block';
+            inspectionErrorTip.innerHTML = `
+              <strong>권한 부족 (IAM Authorization):</strong> 대상 계정의 <code>JungleToolsCrossAccountRole</code>에 <code>ec2:DescribeNetworkInterfaces</code> 권한이 없습니다.<br>
+              터미널에서 <code>./scripts/setup-all-spokes.sh</code>를 실행하여 Spoke 계정 IAM 역할을 업데이트해 주세요.
+            `;
+          } else {
+            inspectionErrorTip.style.display = 'none';
+          }
+        }
+      }
+
+      // Render Terminal Logs & Auto-expand log body
+      renderTerminalLogs(logs);
+      showInspectionLogs(true);
+
+      // Render table error row
+      if (tableBodyResources) {
+        tableBodyResources.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--danger); padding: 24px;">
+              <i data-lucide="alert-triangle" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"></i>
+              <strong>Could not inspect connected resources:</strong> ${errorMsg}<br>
+              <span style="font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; display: inline-block;">
+                아래 [Inspection Execution Logs & Trace]에서 상세 에러 및 문제 해결 가이드를 확인하세요.
+              </span>
+            </td>
+          </tr>
+        `;
+      }
+      if (resourcesTableContainer) resourcesTableContainer.style.display = 'block';
+
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    // Success Handling
+    const resources = data.resources || [];
+    const referencedRules = data.referencedByRules || [];
+    const totalResources = data.totalConnectedResources ?? resources.length;
+    const totalReferenced = data.totalReferencingRules ?? referencedRules.length;
+
+    if (countResources) countResources.textContent = totalResources;
+
+    // Update Header Status Badge
+    if (detailSgUsageBadge) {
+      if (totalResources === 0 && totalReferenced === 0) {
+        detailSgUsageBadge.className = 'badge badge-warning badge-clickable';
+        detailSgUsageBadge.innerHTML = '<i data-lucide="alert-triangle" style="width:12px;height:12px;margin-right:4px;"></i> Unused (0 Resources)';
+      } else {
+        detailSgUsageBadge.className = 'badge badge-healthy badge-clickable';
+        const labelText = totalResources > 0 
+          ? `In Use (${totalResources} resource${totalResources > 1 ? 's' : ''})`
+          : `Referenced (${totalReferenced} rule${totalReferenced > 1 ? 's' : ''})`;
+        detailSgUsageBadge.innerHTML = `<i data-lucide="check-circle" style="width:12px;height:12px;margin-right:4px;"></i> ${labelText}`;
+      }
+      detailSgUsageBadge.title = 'Click to view execution trace log';
+    }
+
+    // Inspection Log Card status
+    if (inspectionLogStatusBadge) {
+      inspectionLogStatusBadge.className = 'badge badge-healthy';
+      inspectionLogStatusBadge.textContent = 'Success';
+    }
+    if (inspectionErrorBox) inspectionErrorBox.style.display = 'none';
+    renderTerminalLogs(data.logs || [`[${new Date().toISOString()}] [INFO] Inspection completed successfully.`]);
+
+    // Render Connected Resources Table
+    if (totalResources === 0 && totalReferenced === 0) {
+      if (resourcesEmptyAlert) resourcesEmptyAlert.style.display = 'flex';
+      if (resourcesTableContainer) resourcesTableContainer.style.display = 'none';
+    } else {
+      if (resourcesEmptyAlert) resourcesEmptyAlert.style.display = 'none';
+      if (resourcesTableContainer) resourcesTableContainer.style.display = 'block';
+
+      if (tableBodyResources) {
+        tableBodyResources.innerHTML = '';
+        if (resources.length === 0) {
+          tableBodyResources.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                No network interfaces directly attached to this security group.
+              </td>
+            </tr>
+          `;
+        } else {
+          resources.forEach(r => {
+            const tr = document.createElement('tr');
+            const pillClass = (r.resourceType || '').toLowerCase();
+            const iconName = r.icon || 'cpu';
+
+            tr.innerHTML = `
+              <td>
+                <span class="resource-pill ${pillClass}">
+                  <i data-lucide="${iconName}" style="width:12px;height:12px;"></i>
+                  <span>${r.resourceType}</span>
+                </span>
+              </td>
+              <td>
+                <div style="font-weight: 600; color: var(--text-main); font-size: 0.88rem;">${r.resourceName || '-'}</div>
+                <div class="code-text" style="font-size: 0.76rem; color: var(--text-muted);">${r.resourceId || '-'} ${r.details ? `• ${r.details}` : ''}</div>
+              </td>
+              <td>
+                <span class="code-text" style="font-size: 0.8rem; color: var(--accent-cyan);">${r.privateIp || '-'}</span>
+              </td>
+              <td>
+                <span class="code-text" style="font-size: 0.78rem;">${r.networkInterfaceId || '-'}</span>
+              </td>
+              <td>
+                <span class="code-text" style="font-size: 0.76rem; color: var(--text-muted);">${r.subnetId || '-'}</span>
+              </td>
+              <td>
+                <span class="badge ${r.status === 'in-use' ? 'badge-healthy' : 'badge-update'}" style="font-size: 0.7rem;">
+                  ${r.status || 'in-use'}
+                </span>
+              </td>
+            `;
+            tableBodyResources.appendChild(tr);
+          });
+        }
+      }
+    }
+
+    // Render Cross-SG Rules Referencing this SG
+    if (totalReferenced > 0) {
+      if (referencedRulesContainer) referencedRulesContainer.style.display = 'block';
+      if (countReferencedRules) countReferencedRules.textContent = totalReferenced;
+      if (tableBodyReferencedRules) {
+        tableBodyReferencedRules.innerHTML = '';
+        referencedRules.forEach(rule => {
+          const tr = document.createElement('tr');
+          const isEgress = rule.isEgress;
+          const dirBadge = isEgress 
+            ? '<span class="badge badge-update" style="font-size:0.7rem;">Outbound</span>' 
+            : '<span class="badge badge-create" style="font-size:0.7rem;">Inbound</span>';
+          
+          const portDisplay = (rule.fromPort === rule.toPort) 
+            ? (rule.fromPort === 'All' ? 'All Ports' : rule.fromPort) 
+            : `${rule.fromPort} - ${rule.toPort}`;
+
+          tr.innerHTML = `
+            <td>
+              <strong style="color: var(--text-main);">${rule.groupName || rule.groupId}</strong>
+              <div class="code-text" style="font-size: 0.76rem; color: var(--text-muted);">${rule.groupId}</div>
+            </td>
+            <td>${dirBadge}</td>
+            <td><span class="code-text" style="font-size: 0.78rem;">${rule.ipProtocol}</span></td>
+            <td><span class="code-text" style="font-size: 0.8rem; color: var(--accent-cyan);">${portDisplay}</span></td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${rule.description || '-'}</td>
+          `;
+          tableBodyReferencedRules.appendChild(tr);
+        });
+      }
+    } else {
+      if (referencedRulesContainer) referencedRulesContainer.style.display = 'none';
+    }
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    console.error('Error fetching SG connected resources:', err);
+    if (resourcesLoading) resourcesLoading.style.display = 'none';
+    if (countResources) countResources.textContent = '!';
+    if (detailSgUsageBadge) {
+      detailSgUsageBadge.className = 'badge badge-warning badge-clickable';
+      detailSgUsageBadge.textContent = 'Inspection Failed (로그 보기)';
+    }
+    if (inspectionLogStatusBadge) {
+      inspectionLogStatusBadge.className = 'badge badge-failure';
+      inspectionLogStatusBadge.textContent = 'Failed';
+    }
+    renderTerminalLogs([`[${new Date().toISOString()}] [ERROR] Unexpected Exception: ${err.message}`]);
+    showInspectionLogs(true);
+    if (window.lucide) lucide.createIcons();
+  }
 }
 
 // Map AWS SDK rules structures to a simplified Frontend Model

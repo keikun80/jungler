@@ -254,5 +254,37 @@ describe('Frontend UI Menu Navigation & Feature Tests (JSDOM)', () => {
     assert.equal(elInUseSub.textContent, '60 GiB ($3.00/월)');
     assert.equal(elSavings.textContent, '-$2.00/월');
   });
+
+  test('8. Security Group Connected Resources: Tab navigation and elements exist', () => {
+    const tabInbound = document.getElementById('tab-inbound');
+    const tabOutbound = document.getElementById('tab-outbound');
+    const tabResources = document.getElementById('tab-resources');
+    const paneInbound = document.getElementById('pane-inbound');
+    const paneOutbound = document.getElementById('pane-outbound');
+    const paneResources = document.getElementById('pane-resources');
+    const usageBadge = document.getElementById('detail-sg-usage-badge');
+    const countResources = document.getElementById('count-resources');
+    const tableBodyResources = document.getElementById('table-body-resources');
+
+    assert.ok(tabResources, 'tab-resources button must exist');
+    assert.ok(paneResources, 'pane-resources container must exist');
+    assert.ok(usageBadge, 'detail-sg-usage-badge element must exist');
+    assert.ok(countResources, 'count-resources element must exist');
+    assert.ok(tableBodyResources, 'table-body-resources must exist');
+
+    // Click Connected Resources tab
+    tabResources.click();
+    assert.ok(tabResources.classList.contains('active'), 'Connected Resources tab should be active');
+    assert.ok(paneResources.classList.contains('active'), 'Connected Resources pane should be active');
+    assert.ok(!tabInbound.classList.contains('active'), 'Inbound tab should be inactive');
+    assert.ok(!paneInbound.classList.contains('active'), 'Inbound pane should be inactive');
+
+    // Click Inbound Rules tab back
+    tabInbound.click();
+    assert.ok(tabInbound.classList.contains('active'), 'Inbound tab should be active');
+    assert.ok(paneInbound.classList.contains('active'), 'Inbound pane should be active');
+    assert.ok(!tabResources.classList.contains('active'), 'Resources tab should be inactive');
+    assert.ok(!paneResources.classList.contains('active'), 'Resources pane should be inactive');
+  });
 });
 

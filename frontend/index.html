@@ -457,7 +457,10 @@
               <i data-lucide="shield"></i>
             </div>
             <div>
-              <h2 id="detail-sg-name">sg-name</h2>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <h2 id="detail-sg-name">sg-name</h2>
+                <span id="detail-sg-usage-badge" class="badge badge-update" style="display: none;">Checking...</span>
+              </div>
               <p id="detail-sg-id" class="code-text">sg-00000000000</p>
             </div>
           </div>
@@ -481,13 +484,17 @@
           </div>
         </div>
 
-        <!-- Rules Tab Menu -->
+        <!-- Rules & Resources Tab Menu -->
         <div class="rules-tabs">
           <button id="tab-inbound" class="tab-btn active">Inbound Rules (<span id="count-inbound">0</span>)</button>
           <button id="tab-outbound" class="tab-btn">Outbound Rules (<span id="count-outbound">0</span>)</button>
+          <button id="tab-resources" class="tab-btn">
+            <i data-lucide="link-2" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i>
+            Connected Resources (<span id="count-resources">-</span>)
+          </button>
         </div>
 
-        <!-- Rules Container -->
+        <!-- Rules & Resources Container -->
         <div class="rules-container">
           
           <!-- Inbound Rules Pane -->
@@ -532,6 +539,114 @@
               <i data-lucide="plus"></i>
               <span>Add Outbound Rule</span>
             </button>
+          </div>
+
+          <!-- Connected Resources Pane -->
+          <div id="pane-resources" class="rules-pane">
+            <div class="resources-pane-header" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <div>
+                <h3 style="font-size: 1.05rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Attached AWS Resources & Network Interfaces</h3>
+                <p style="font-size: 0.82rem; color: var(--text-muted);">Real-time inspection of EC2 instances, load balancers, RDS databases, Lambda interfaces, and cross-group references.</p>
+              </div>
+              <button id="btn-refresh-sg-resources" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">
+                <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i>
+                <span>Refresh Status</span>
+              </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="resources-loading" style="padding: 36px 0; text-align: center; color: var(--text-muted); display: none;">
+              <div class="spinner" style="margin: 0 auto 12px auto;"></div>
+              <p style="font-size: 0.88rem;">Scanning network interfaces (ENIs) and referenced security groups...</p>
+            </div>
+
+            <!-- Empty / Unused State -->
+            <div id="resources-empty-alert" class="resources-empty-card" style="display: none;">
+              <div class="empty-icon-wrap" style="color: var(--warning); display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
+              </div>
+              <div>
+                <h4 style="font-size: 0.98rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">No Connected Resources (Orphaned / Unused SG)</h4>
+                <p style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.5;">
+                  This security group is not attached to any active network interfaces (EC2, ELB, RDS, Lambda) and is not referenced by any other security group rules. It is safe to delete if no longer required.
+                </p>
+              </div>
+            </div>
+
+            <!-- Attached Resources Table Container -->
+            <div id="resources-table-container">
+              <table class="rules-table">
+                <thead>
+                  <tr>
+                    <th style="width: 16%;">Resource Type</th>
+                    <th style="width: 26%;">Resource Name / ID</th>
+                    <th style="width: 16%;">Private IP</th>
+                    <th style="width: 20%;">Network Interface (ENI)</th>
+                    <th style="width: 12%;">Subnet</th>
+                    <th style="width: 10%;">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="table-body-resources">
+                  <!-- Dynamic Resource Rows -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Cross-SG Referencing Section -->
+            <div id="referenced-rules-container" style="margin-top: 24px; display: none;">
+              <div style="margin-bottom: 12px;">
+                <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="share-2" style="width: 16px; height: 16px; color: var(--accent-cyan);"></i>
+                  <span>Referenced by Other Security Group Rules (<span id="count-referenced-rules">0</span>)</span>
+                </h4>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Other security groups that permit ingress or egress traffic referencing this security group ID.</p>
+              </div>
+              <table class="rules-table">
+                <thead>
+                  <tr>
+                    <th style="width: 28%;">Parent Security Group</th>
+                    <th style="width: 12%;">Direction</th>
+                    <th style="width: 12%;">Protocol</th>
+                    <th style="width: 16%;">Port Range</th>
+                    <th style="width: 32%;">Rule Description</th>
+                  </tr>
+                </thead>
+                <tbody id="table-body-referenced-rules">
+                  <!-- Dynamic Reference Rows -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Inspection Execution Log & Trace Section -->
+            <div id="resources-log-card" class="inspection-log-card">
+              <div class="log-card-header" id="header-toggle-inspection-log" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="terminal" style="width: 16px; height: 16px; color: var(--accent-cyan);"></i>
+                  <span style="font-weight: 600; font-size: 0.88rem; color: var(--text-main);">Inspection Execution Logs & Trace</span>
+                  <span id="inspection-log-status-badge" class="badge badge-update" style="font-size: 0.7rem;">Idle</span>
+                </div>
+                <button id="btn-toggle-inspection-log" type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;">
+                  <span id="text-toggle-inspection-log">Show Logs</span>
+                  <i data-lucide="chevron-down" id="icon-toggle-inspection-log" style="width: 12px; height: 12px;"></i>
+                </button>
+              </div>
+              <div id="inspection-log-body" style="display: none; margin-top: 12px;">
+                <!-- Error highlight callout -->
+                <div id="inspection-error-box" class="inspection-error-alert" style="display: none;">
+                  <div style="display: flex; align-items: flex-start; gap: 10px;">
+                    <i data-lucide="alert-octagon" style="width: 18px; height: 18px; color: var(--danger); flex-shrink: 0; margin-top: 2px;"></i>
+                    <div style="flex: 1;">
+                      <div id="inspection-error-title" style="font-weight: 600; color: var(--danger); font-size: 0.86rem;">Inspection Failed</div>
+                      <div id="inspection-error-desc" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; word-break: break-all;"></div>
+                      <div id="inspection-error-tip" style="font-size: 0.78rem; color: #fb923c; margin-top: 6px; background: rgba(234, 88, 12, 0.1); padding: 8px 12px; border-radius: 4px; border: 1px solid rgba(234, 88, 12, 0.25);"></div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Monospace Terminal Log Output -->
+                <pre id="inspection-log-terminal" class="terminal-log-output">No logs recorded yet.</pre>
+              </div>
+            </div>
+
           </div>
 
         </div>
