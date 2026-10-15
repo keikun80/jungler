@@ -3250,19 +3250,28 @@ function initAppBrandTitle() {
   const gitBranch = window.APP_CONFIG?.gitBranch || 'develop';
   const rawCommit = window.APP_CONFIG?.gitCommit || '';
   const gitCommit = rawCommit ? rawCommit.substring(0, 7) : '';
+  const version = window.APP_CONFIG?.version || (gitCommit ? `v${gitCommit}` : '');
   const devBadgeText = gitCommit ? `${gitBranch}@${gitCommit}` : gitBranch;
 
   const logoTitleEl = document.getElementById('app-logo-title') || document.querySelector('.sidebar-header .logo span');
   if (logoTitleEl) {
+    const versionHtml = version
+      ? `<span class="version-badge" title="Commit: ${gitCommit || version}">${version}</span>`
+      : '';
+
     if (isDev) {
-      logoTitleEl.innerHTML = `Jungle tools<span class="dev-branch-badge" title="Git Branch: ${gitBranch} | Commit: ${gitCommit || 'N/A'}" style="margin-left: 6px; font-size: 0.91rem; font-weight: 700; background: #f59e0b !important; background-color: #f59e0b !important; color: #000000 !important; -webkit-text-fill-color: #000000 !important; padding: 2px 6px; border-radius: 4px; vertical-align: middle; letter-spacing: 0.3px; font-family: monospace; text-transform: none; display: inline-block;">(${devBadgeText})</span>`;
+      logoTitleEl.innerHTML = `Jungler${versionHtml}<span class="dev-branch-badge" title="Git Branch: ${gitBranch} | Commit: ${gitCommit || 'N/A'}" style="margin-left: 6px; font-size: 0.91rem; font-weight: 700; background: #f59e0b !important; background-color: #f59e0b !important; color: #000000 !important; -webkit-text-fill-color: #000000 !important; padding: 2px 6px; border-radius: 4px; vertical-align: middle; letter-spacing: 0.3px; font-family: monospace; text-transform: none; display: inline-block;">(${devBadgeText})</span>`;
     } else {
-      logoTitleEl.textContent = 'Jungle Tools';
+      logoTitleEl.innerHTML = `Jungler${versionHtml}`;
     }
   }
 
   if (isDev) {
-    document.title = `Jungle tools(${devBadgeText}) Console`;
+    document.title = `Jungler(${devBadgeText}) Console`;
+  } else if (version) {
+    document.title = `Jungler ${version} Console`;
+  } else {
+    document.title = 'Jungler Console';
   }
 }
 
