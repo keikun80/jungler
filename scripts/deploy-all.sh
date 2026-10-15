@@ -45,8 +45,8 @@ echo -e "${CYAN}============================================================${NC
 # Step 1: Install backend dependencies
 echo -e "\n${YELLOW}[Step 1] Installing backend dependencies...${NC}"
 cd "$ROOT_DIR/backend"
-echo -e "${CYAN}Running: npm install${NC}"
-npm install
+echo -e "${CYAN}Running: npm install --ignore-scripts${NC}"
+npm install --ignore-scripts
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to install backend dependencies.${NC}"
     exit 1
@@ -121,7 +121,7 @@ website_url=$(node -e "const outputs = $stack_outputs; console.log((outputs.find
 api_endpoint=$(node -e "const outputs = $stack_outputs; console.log((outputs.find(o => o.OutputKey === 'ApiEndpoint') || {}).OutputValue || '')")
 
 # Extract bucket name from website URL
-bucket_name=$(echo "$website_url" | sed -e 's|http://||' -e 's|https://||' -e 's|/||' -e 's|\.s3-website.*||' -e 's|\.s3.*||')
+bucket_name=$(echo "$website_url" | sed -E 's|^https?://||' -e 's|/||' -e 's|\.s3-website.*||' -e 's|\.s3.*||')
 echo -e "${GREEN}S3 Bucket Name: ${bucket_name}${NC}"
 
 # Update frontend/config.js with new apiEndpoint

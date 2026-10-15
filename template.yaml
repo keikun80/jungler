@@ -117,6 +117,25 @@ Resources:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
 
+  # S3 Bucket Policy to enforce HTTPS-only access to Audit Logs
+  SgAuditLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SgAuditLogsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EnforceHttpsOnly
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub 'arn:aws:s3:::${SgAuditLogsBucket}'
+              - !Sub 'arn:aws:s3:::${SgAuditLogsBucket}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+
   # Lambda Request Authorizer for BFF Session Cookies
   AuthAuthorizerFunction:
     Type: AWS::Serverless::Function

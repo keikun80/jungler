@@ -207,7 +207,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // Check active BFF session cookie on initial load
-  checkAuthSession();
+  void checkAuthSession();
 
   setupEventListeners();
   switchView('home');
@@ -227,7 +227,7 @@ async function checkAuthSession() {
       isSessionExpired = false;
       showSessionInfo();
       setApiStatus('online');
-      testAndFetchData();
+      void testAndFetchData();
     } else {
       sessionUser = null;
       showSessionInfo();
@@ -255,7 +255,7 @@ function setupEventListeners() {
       }
       apiEndpoint = url;
       localStorage.setItem('sg_api_endpoint', apiEndpoint);
-      if (sessionUser) fetchHomeOverviewData();
+      if (sessionUser) void fetchHomeOverviewData();
     });
   }
 
@@ -287,46 +287,46 @@ function setupEventListeners() {
   if (navHome) {
     navHome.addEventListener('click', () => {
       switchView('home');
-      fetchHomeOverviewData();
+      void fetchHomeOverviewData();
     });
   }
   const btnRefreshHome = document.getElementById('btn-refresh-home');
   if (btnRefreshHome) {
-    btnRefreshHome.addEventListener('click', () => fetchHomeOverviewData());
+    btnRefreshHome.addEventListener('click', () => void fetchHomeOverviewData());
   }
   const btnHomeGotoSg = document.getElementById('btn-home-goto-sg');
   if (btnHomeGotoSg) {
     btnHomeGotoSg.addEventListener('click', () => {
       switchView('sg-dashboard');
-      if (!vpcData || vpcData.length === 0) testAndFetchData();
+      if (!vpcData || vpcData.length === 0) void testAndFetchData();
     });
   }
   const btnHomeGotoBackup = document.getElementById('btn-home-goto-backup');
   if (btnHomeGotoBackup) {
     btnHomeGotoBackup.addEventListener('click', () => {
       switchView('backup-dashboard');
-      fetchAllBackupsData();
+      void fetchAllBackupsData();
     });
   }
   const btnHomeGotoSlack = document.getElementById('btn-home-goto-slack');
   if (btnHomeGotoSlack) {
     btnHomeGotoSlack.addEventListener('click', () => {
       switchView('noti-slack-webhook');
-      fetchSlackConfig();
+      void fetchSlackConfig();
     });
   }
   const btnHomeGotoEmail = document.getElementById('btn-home-goto-email');
   if (btnHomeGotoEmail) {
     btnHomeGotoEmail.addEventListener('click', () => {
       switchView('noti-email-recipients');
-      loadRecipients();
+      void loadRecipients();
     });
   }
   const btnHomeGotoLogs = document.getElementById('btn-home-goto-logs');
   if (btnHomeGotoLogs) {
     btnHomeGotoLogs.addEventListener('click', () => {
       switchView('audit-logs');
-      fetchAuditLogs();
+      void fetchAuditLogs();
     });
   }
 
@@ -335,49 +335,49 @@ function setupEventListeners() {
   if (navAuditLogs) {
     navAuditLogs.addEventListener('click', () => {
       switchView('audit-logs');
-      fetchAuditLogs();
+      void fetchAuditLogs();
     });
   }
   if (navBackupDashboard) {
     navBackupDashboard.addEventListener('click', () => {
       switchView('backup-dashboard');
-      fetchAllBackupsData();
+      void fetchAllBackupsData();
     });
   }
   if (navBackupSnapshotTracer) {
     navBackupSnapshotTracer.addEventListener('click', () => {
       switchView('backup-snapshot-tracer');
-      fetchSnapshotTracerData();
+      void fetchSnapshotTracerData();
     });
   }
   if (navBackupAmiTracer) {
     navBackupAmiTracer.addEventListener('click', () => {
       switchView('backup-ami-tracer');
-      fetchAmiTracerData();
+      void fetchAmiTracerData();
     });
   }
   if (navNotiSlackWebhook) {
     navNotiSlackWebhook.addEventListener('click', () => {
       switchView('noti-slack-webhook');
-      fetchSlackConfig();
+      void fetchSlackConfig();
     });
   }
   if (navNotiSlackEmail) {
     navNotiSlackEmail.addEventListener('click', () => {
       switchView('noti-slack-email');
-      fetchSlackConfig();
+      void fetchSlackConfig();
     });
   }
   if (navNotiEmailSmtp) {
     navNotiEmailSmtp.addEventListener('click', () => {
       switchView('noti-email-smtp');
-      loadSmtpConfig();
+      void loadSmtpConfig();
     });
   }
   if (navNotiEmailRecipients) {
     navNotiEmailRecipients.addEventListener('click', () => {
       switchView('noti-email-recipients');
-      loadRecipients();
+      void loadRecipients();
     });
   }
   const btnOpenAddWebhook = document.getElementById('btn-open-add-webhook');
@@ -429,14 +429,14 @@ function setupEventListeners() {
   // Refresh SGs
   if (btnRefreshSgs) {
     btnRefreshSgs.addEventListener('click', () => {
-      if (validateEndpoint() && validateAuth()) testAndFetchData();
+      if (validateEndpoint() && validateAuth()) void testAndFetchData();
     });
   }
 
   // Refresh Logs
   if (btnRefreshLogs) {
     btnRefreshLogs.addEventListener('click', () => {
-      if (validateEndpoint() && validateAuth()) fetchAuditLogs();
+      if (validateEndpoint() && validateAuth()) void fetchAuditLogs();
     });
   }
 
@@ -444,7 +444,7 @@ function setupEventListeners() {
   const btnRefreshBackups = document.getElementById('btn-refresh-backups');
   if (btnRefreshBackups) {
     btnRefreshBackups.addEventListener('click', () => {
-      if (validateEndpoint() && validateAuth()) fetchAllBackupsData();
+      if (validateEndpoint() && validateAuth()) void fetchAllBackupsData();
     });
   }
 
@@ -452,7 +452,7 @@ function setupEventListeners() {
   const btnRefreshSnapshotTracer = document.getElementById('btn-refresh-snapshot-tracer');
   if (btnRefreshSnapshotTracer) {
     btnRefreshSnapshotTracer.addEventListener('click', () => {
-      if (validateEndpoint() && validateAuth()) fetchSnapshotTracerData();
+      if (validateEndpoint() && validateAuth()) void fetchSnapshotTracerData();
     });
   }
 
@@ -460,7 +460,7 @@ function setupEventListeners() {
   const btnRefreshAmiTracer = document.getElementById('btn-refresh-ami-tracer');
   if (btnRefreshAmiTracer) {
     btnRefreshAmiTracer.addEventListener('click', () => {
-      if (validateEndpoint() && validateAuth()) fetchAmiTracerData();
+      if (validateEndpoint() && validateAuth()) void fetchAmiTracerData();
     });
   }
 
@@ -510,7 +510,7 @@ function setupEventListeners() {
   if (tabResources) tabResources.addEventListener('click', () => switchRulesTab('resources'));
   if (btnRefreshSgResources) {
     btnRefreshSgResources.addEventListener('click', () => {
-      if (selectedSg) fetchAndRenderSecurityGroupResources(selectedSg.groupId);
+      if (selectedSg) void fetchAndRenderSecurityGroupResources(selectedSg.groupId);
     });
   }
 
@@ -538,7 +538,7 @@ function setupEventListeners() {
   
   if (btnCancelRules) {
     btnCancelRules.addEventListener('click', () => {
-      if (selectedSg) selectSecurityGroup(selectedSg.groupId);
+      if (selectedSg) void selectSecurityGroup(selectedSg.groupId);
     });
   }
   if (btnSaveRules) btnSaveRules.addEventListener('click', handleSaveRules);
@@ -553,14 +553,14 @@ function setupEventListeners() {
   if (targetAccountSelect) {
     targetAccountSelect.addEventListener('change', () => {
       localStorage.setItem('sg_target_account', targetAccountSelect.value);
-      if (validateEndpoint() && validateAuth()) testAndFetchData();
+      if (validateEndpoint() && validateAuth()) void testAndFetchData();
     });
   }
 
   if (targetRoleInput) {
     targetRoleInput.addEventListener('blur', () => {
       localStorage.setItem('sg_target_role', targetRoleInput.value.trim());
-      if (validateEndpoint() && validateAuth()) testAndFetchData();
+      if (validateEndpoint() && validateAuth()) void testAndFetchData();
     });
   }
 
@@ -775,7 +775,7 @@ async function handleLogin() {
     showSessionInfo();
     hideLoginOverlay();
     setApiStatus('online');
-    testAndFetchData();
+    await testAndFetchData();
     showToast('Signed in successfully with secure HttpOnly session cookie.', 'success');
 
   } catch (error) {
@@ -1021,7 +1021,7 @@ async function testAndFetchData() {
     setApiStatus('online');
     renderSidebarVpcList();
     updateDashboardMetrics();
-    fetchBackupSummaryOnly();
+    void fetchBackupSummaryOnly();
     showToast('Successfully synchronized with AWS VPC API.', 'success');
   } catch (error) {
     console.error(error);
@@ -1273,7 +1273,7 @@ function selectSecurityGroup(sgId) {
   switchRulesTab('inbound');
 
   // Asynchronously fetch connected resources & rule references for selected SG
-  fetchAndRenderSecurityGroupResources(selectedSg.groupId);
+  void fetchAndRenderSecurityGroupResources(selectedSg.groupId);
 }
 
 // Toggle and control inspection logs visibility
@@ -2661,7 +2661,8 @@ async function saveWebhookModalSubmit() {
       currentWebhooksList[index] = { id, name, url, messageType, scheduleCron, enabled };
     }
   } else {
-    const newId = 'wh_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const randomSuffix = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Date.now().toString(36);
+    const newId = 'wh_' + Date.now() + '_' + randomSuffix;
     currentWebhooksList.push({ id: newId, name, url, messageType, scheduleCron, enabled });
   }
 

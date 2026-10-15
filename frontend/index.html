@@ -43,7 +43,7 @@
             <span>Target Account</span>
           </div>
           <div class="sidebar-account-select-wrapper">
-            <select id="target-account-select" class="sidebar-account-select">
+            <select id="target-account-select" class="sidebar-account-select" aria-label="Target Account">
             </select>
             <i data-lucide="chevron-down" class="select-chevron"></i>
           </div>
@@ -424,7 +424,7 @@
           <!-- SG Search Input -->
           <div class="sidebar-search-box" style="margin: 0; width: 260px;">
             <i data-lucide="search" class="search-icon"></i>
-            <input type="text" id="sidebar-sg-search" placeholder="Search Security Group or ID..." />
+            <input type="text" id="sidebar-sg-search" placeholder="Search Security Group or ID..." aria-label="Search Security Group or ID" />
             <button id="btn-clear-sg-search" class="btn-clear-search" style="display: none;" title="Clear search">&times;</button>
           </div>
         </div>
@@ -1350,7 +1350,7 @@
             <option value="cron(0 0 ? * MON *)">매주 월요일 09:00 KST (cron(0 0 ? * MON *))</option>
             <option value="custom">직접 입력 (Custom Crontab)</option>
           </select>
-          <input type="text" id="webhook-modal-schedule-custom" placeholder="cron(0 0 * * ? *)" style="display: none; margin-top: 8px; width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-main); color: var(--text-main); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;" />
+          <input type="text" id="webhook-modal-schedule-custom" placeholder="cron(0 0 * * ? *)" aria-label="직접 입력 일정 (Custom Crontab)" style="display: none; margin-top: 8px; width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-main); color: var(--text-main); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;" />
           <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;">
             AWS EventBridge 표현식 형식: <code>cron(분 시 일 월 요일 연도)</code> (예: <code>cron(0 0 * * ? *)</code>는 UTC 00:00 = KST 09:00)
           </p>
