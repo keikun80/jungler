@@ -1,21 +1,22 @@
 # Jungle Tools 전체 기능 테스트 시나리오 명세서 (Test Scenarios Specification)
 
-본 문서는 Jungle Tools의 모든 백엔드 로직, API 엔드포인트, AWS 리소스 제어, WORM S3 Object Lock 감사 로깅, 멀티 계정 백업 모니터링 및 알림 연동 기능을 자동으로 검증하기 위한 **테스트 시나리오 및 실행 가이드**입니다.
+본 문서는 Jungle Tools의 모든 백엔드 로직, API 엔드포인트, AWS 리소스 제어, **보안 그룹 연관 리소스(EC2, RDS, ELB, ENI 등) 인스펙션**, WORM S3 Object Lock 감사 로깅, 멀티 계정 백업 모니터링 및 알림 연동 기능을 자동으로 검증하기 위한 **테스트 시나리오 및 실행 가이드**입니다.
 
 ---
 
 ## 1. 테스트 프레임워크 개요
 
-Jungle Tools의 테스트 체계는 **Phase 1: 백엔드 단위 테스트(Unit Tests)**와 **Phase 2: 실환경 E2E 통합 테스트(Live Cloud E2E Tests)**의 2단계로 구성됩니다.
+Jungle Tools의 테스트 체계는 **Phase 1: 백엔드 및 UI 단위 테스트(Unit Tests & Frontend JSDOM)**와 **Phase 2: 실환경 E2E 통합 테스트(Live Cloud E2E Tests)**의 2단계로 구성됩니다.
 
 ```
 jungletools/
 ├── backend/
-│   ├── package.json              # npm test 스크립트 ("node --test tests/*.test.mjs")
+│   ├── package.json              # npm test ("node --test tests/*.test.mjs")
 │   └── tests/
-│       └── unit.test.mjs         # [Phase 1] 유틸리티 및 보안 검증 단위 테스트
+│       ├── unit.test.mjs         # [Phase 1.2] 백엔드 유틸리티, ENI 파서, 보안 단위 테스트 (21개 케이스)
+│       └── frontend.test.mjs     # [Phase 1.1] 프론트엔드 가상 DOM(JSDOM) UI 메뉴 및 연관 리소스 테스트 (8개 케이스)
 └── scripts/
-    ├── test-all.mjs              # [Phase 2] AWS SigV4 인증 기반 실환경 E2E 통합 테스트 러너
+    ├── test-all.mjs              # [Phase 2] AWS SigV4 / BFF 인증 기반 실환경 E2E 통합 테스트 러너 (16개 시나리오)
     ├── test-all.sh               # Linux / macOS 원클릭 통합 테스트 실행 스크립트
     └── test-all.ps1              # Windows PowerShell 원클릭 통합 테스트 실행 스크립트
 ```
@@ -38,7 +39,7 @@ jungletools/
 .\scripts\test-all.ps1
 ```
 
-### 2) 백엔드 단위 테스트만 별도 실행
+### 2) 백엔드 및 UI 단위 테스트만 별도 실행
 ```bash
 npm test --prefix backend
 ```
@@ -57,22 +58,24 @@ Choose [1/2] (Default 1):
 
 ## 3. 세부 테스트 시나리오 명세
 
-### [Phase 1.1] 프론트엔드 UI 메뉴 탐색 및 인터랙션 테스트 (Frontend UI Tests - 6개 케이스)
+### [Phase 1.1] 프론트엔드 UI 메뉴 탐색 및 인터랙션 테스트 (Frontend UI Tests - 8개 케이스)
 
-Virtual DOM (JSDOM) 환경에서 `frontend/index.html`과 `frontend/app.js`를 구동하여 사이드바의 각 메뉴 클릭, 뷰 전환, 브레드크럼 동적 갱신, 프로필 선택, 모달 제어를 자동 검증합니다:
+Virtual DOM (JSDOM) 환경에서 `frontend/index.html`과 `frontend/app.js`를 구동하여 사이드바의 각 메뉴 클릭, 뷰 전환, 브레드크럼 동적 갱신, 프로필 선택, 모달 제어 및 **보안 그룹 연관 리소스 탭**을 자동 검증합니다:
 
 | 테스트 케이스 ID | 테스트 대상 UI | 사용자 동작 및 시나리오 | 기대 결과 (Expected Result) |
 | :--- | :--- | :--- | :--- |
 | `FE-NAV-01` | **Initial View & Footer** | **초기 로드 상태 검증**<br>- `DOMContentLoaded` 실행 후 기본 뷰 상태 | 1. `view-home`이 활성화(`active`)됨<br>2. 브레드크럼이 `Home`으로 표시됨<br>3. Target Account 드롭다운에 계정 번호 없는 간소화 명칭(`Hub (l-iam-s2)`) 노출<br>4. 사이드바 최하단에 API Endpoint 및 Role Name 출력 확인 |
-| `FE-NAV-02` | **SG Manage Menu** | **보안 그룹 메뉴 클릭 및 뷰 전환**<br>- `#nav-sg-dashboard`, `#nav-sg-logs` 클릭 | 1. 대시보드 클릭 시 `view-sg-dashboard` 활성화 & 브레드크럼 `SG Manage` / **`Dashboard`**<br>2. 로그 클릭 시 `view-sg-logs` 활성화 & 브레드크럼 `SG Manage` / **`Logs`** |
+| `FE-NAV-02` | **SG Manage Menu** | **보안 그룹 메뉴 클릭 및 뷰 전환**<br>- `#nav-sg-dashboard`, `#nav-audit-logs` 클릭 | 1. 대시보드 클릭 시 `view-sg-dashboard` 활성화 & 브레드크럼 `SG Manage` / **`Dashboard`**<br>2. 로그 클릭 시 `view-sg-logs` 활성화 & 브레드크럼 `Audit Logs` / **`Logs`** |
 | `FE-NAV-03` | **Backup Monitor Menu** | **백업 관제 및 알림 서브메뉴 순회 클릭**<br>- 대시보드, 슬랙 웹훅, 슬랙 이메일, SMTP, 주소 등록 메뉴 순차 클릭 | 1. 각 클릭 시 해당하는 뷰(`view-backup-dashboard`, `view-noti-slack-webhook`, `view-noti-slack-email`, `view-noti-email-smtp`, `view-noti-email-recipients`) 활성화<br>2. 브레드크럼에 다계층 경로(`Backup Monitor / Notification / Slack` / **`웹훅`** 등) 정확히 반영 |
 | `FE-NAV-04` | **Home Quick Jump** | **홈 화면 퀵 액세스 바로가기 버튼**<br>- 대시보드 내 바로가기 버튼 5종 클릭 | 1. `#btn-home-goto-sg` ➔ SG 대시보드 이동<br>2. `#btn-home-goto-backup` ➔ 백업 대시보드 이동<br>3. `#btn-home-goto-slack` ➔ 웹훅 설정 이동<br>4. `#btn-home-goto-email` ➔ 수신자 주소 등록 이동<br>5. `#btn-home-goto-logs` ➔ 감사 로그 이동 |
 | `FE-NAV-05` | **Profile Switch** | **Target Account(프로필) 드롭다운 변경**<br>- `#target-account-select` 값 변경 이벤트 발생 | `localStorage`에 선택된 계정 ID가 즉시 저장되고, 후속 API 요청 헤더(`X-Target-Role-Arn`)에 연동됨 |
 | `FE-NAV-06` | **Modal Lifecycle** | **팝업 모달 열기/닫기 라이프사이클**<br>- SG 생성 모달 및 웹훅 추가 모달 트리거 | 1. 열기 버튼 클릭 시 모달 엘리먼트에 `open` 클래스 추가<br>2. 닫기/취소 버튼 클릭 시 `open` 클래스 정상 제거 |
+| `FE-NAV-07` | **AMI Tracer Metrics** | **AMI 추적기 메트릭 및 비용 절감 시뮬레이션**<br>- `updateAmiTracerMetrics` 함수 호출 | 총 AMI 개수, 스토리지 용량, 미사용 AMI 개수, 월간 절감 가능 비용(`-$2.00/월`) 정상 렌더링 검증 |
+| `FE-NAV-08` | **Connected Resources Tab** | **보안 그룹 연관 리소스 탭 전환 및 요소 검증**<br>- `#tab-resources` 클릭 및 `#tab-inbound` 복귀 | 1. `#tab-resources` 및 `#pane-resources`가 활성화되고 인바운드 탭이 비활성화됨<br>2. `detail-sg-usage-badge`, `count-resources`, `table-body-resources` 엘리먼트 존재 및 동작 확인 |
 
 ---
 
-### [Phase 1.2] 백엔드 로직 및 보안 단위 테스트 (Backend Unit Tests - 5개 스위트 / 13개 케이스)
+### [Phase 1.2] 백엔드 로직 및 보안 단위 테스트 (Backend Unit Tests - 7개 스위트 / 21개 케이스)
 
 | 스위트 | 테스트 케이스 ID | 테스트 항목 및 시나리오 | 기대 결과 (Expected Result) |
 | :--- | :--- | :--- | :--- |
@@ -89,10 +92,18 @@ Virtual DOM (JSDOM) 환경에서 `frontend/index.html`과 `frontend/app.js`를 �
 | | `UT-COOKIE-03` | **쿠키 부재/빈값 예외 처리 검증**<br>- 빈 객체, `null`, 헤더 없음 시 빈 딕셔너리 반환 | 예외 없이 `{}` 반환 |
 | **5. IAM Security Pattern** | `UT-IAM-01` | **Cross-Account Role ARN 정규식 검증**<br>- `arn:aws:iam::<AccountID>:role/JungleToolsCrossAccountRole` | 패턴 일치 (`true`) |
 | | `UT-IAM-02` | **비인가 IAM 엔티티 접근 차단 검증**<br>- `AdministratorAccess`, `root`, `user/...` 등 임의 역할 주입 시도 차단 | 패턴 불일치 (`false`) |
+| **6. Audit Actor Extraction** | `UT-ACTOR-01` | **감사 로그 작업자 식별자 추출 검증**<br>- 세션 사용자, 요청 헤더, AssumeRole 세션 등 작업자 파싱 | 올바른 IAM Principal 또는 `SYSTEM` 식별자 반환 |
+| **7. ENI Connected Resources** | `UT-ENI-01` | **EC2 Instance ENI 파싱 검증**<br>- 인스턴스 ID, 인스턴스 Name 태그, 사설 IP, 상태 매핑 | `resourceType: 'EC2'`, `resourceName: 'prod-api-server'`, 사설 IP 정확히 추출 |
+| | `UT-ENI-02` | **Application Load Balancer (ALB) 파싱**<br>- `ELB app/my-prod-alb/...` 접두사 파싱 | `resourceType: 'ALB'`, `resourceName: 'my-prod-alb'`, `icon: 'network'` 매핑 |
+| | `UT-ENI-03` | **Network Load Balancer (NLB) 파싱**<br>- `ELB net/my-prod-nlb/...` 접두사 또는 `network_load_balancer` | `resourceType: 'NLB'`, `resourceName: 'my-prod-nlb'` 매핑 |
+| | `UT-ENI-04` | **RDS Database ENI 파싱**<br>- `RDSNetworkInterface` 또는 `rds` 키워드 | `resourceType: 'RDS'`, `icon: 'database'` 매핑 |
+| | `UT-ENI-05` | **AWS Lambda VPC ENI 파싱**<br>- `AWS Lambda VPC ENI-...` 또는 `InterfaceType: 'lambda'` | `resourceType: 'Lambda'`, `icon: 'zap'` 매핑 |
+| | `UT-ENI-06` | **VPC Endpoint (PrivateLink) 파싱**<br>- `vpce-[0-9a-f]+` 정규식 추출 | `resourceType: 'VPCEndpoint'`, `resourceId: 'vpce-xxxx'` 매핑 |
+| | `UT-ENI-07` | **일반 Network Interface Fallback 처리**<br>- 미분류 커스텀 인터페이스 | `resourceType: 'ENI'`, Description 기반 대체 이름 정상 반환 |
 
 ---
 
-### [Phase 2] 실환경 E2E 통합 테스트 (Live Cloud E2E - 14개 시나리오)
+### [Phase 2] 실환경 E2E 통합 테스트 (Live Cloud E2E - 16개 시나리오)
 
 | 시나리오 ID | 대상 서비스 | 테스트 항목 및 API | 테스트 절차 및 검증 기준 |
 | :--- | :--- | :--- | :--- |
@@ -102,7 +113,9 @@ Virtual DOM (JSDOM) 환경에서 `frontend/index.html`과 `frontend/app.js`를 �
 | `E2E-SG-01` | **SG Manage** | **VPC 및 보안 그룹 목록 조회**<br>`GET /security-groups` (쿠키 포함) | 1. 세션 쿠키를 포함하여 엔드포인트 호출<br>2. 응답 상태 코드 `200 OK`<br>3. `vpcs` 배열 내 유효한 `vpcId` 및 연결된 서브넷/CIDR 데이터 존재 검증 |
 | `E2E-SG-02` | **SG Manage** | **임시 보안 그룹 생성**<br>`POST /security-groups` | 1. 첫 번째 VPC를 대상으로 `jungle-e2e-test-<timestamp>` 이름의 SG 생성 요청<br>2. 응답 상태 코드 `200 OK`<br>3. `sg-`로 시작하는 유효한 `groupId` 정상 발급 검증 |
 | `E2E-SG-03` | **SG Manage** | **인바운드 방화벽 규칙 추가**<br>`PUT /security-groups/{id}/rules` | 1. 발급된 `groupId`에 TCP 8080 포트 (`10.0.0.0/16`) 인바운드 규칙 등록<br>2. 응답 상태 코드 `200 OK`<br>3. EC2 보안 그룹에 규칙이 정상 반영되었는지 검증 |
-| `E2E-SG-04` | **SG Manage** | **임시 보안 그룹 삭제 및 정리**<br>`DELETE /security-groups/{id}` | 1. 생성된 임시 보안 그룹에 삭제 요청 전송<br>2. 응답 상태 코드 `200 OK`<br>3. 계정 내 리소스 누수 없이 정상 삭제 완료 검증 |
+| `E2E-SG-04` | **SG Manage** | **[신규] 보안 그룹 연관 리소스 및 교차 참조 조회**<br>`GET /security-groups/{id}/resources` | 1. 생성된 임시 보안 그룹 ID로 리소스 조회 호출<br>2. 응답 코드 `200 OK`, `isInUse: false`, `totalConnectedResources: 0` 확인<br>3. `logs` 배열 내 타임스탬프 기반 인스펙션 단계 로그 정상 반환 확인 |
+| `E2E-SG-05` | **SG Manage** | **[신규] 비정상 SG ID 유효성 검증**<br>`GET /security-groups/invalid-id/resources` | 1. 잘못된 형식의 SG ID로 호출<br>2. 백엔드에서 `400 Bad Request` 에러 및 유효성 오류 로그 반환 검증 |
+| `E2E-SG-06` | **SG Manage** | **임시 보안 그룹 삭제 및 정리**<br>`DELETE /security-groups/{id}` | 1. 생성된 임시 보안 그룹에 삭제 요청 전송<br>2. 응답 상태 코드 `200 OK`<br>3. 계정 내 리소스 누수 없이 정상 삭제 완료 검증 |
 | `E2E-AUDIT-01` | **Audit & WORM** | **DynamoDB 감사 로그 및 WORM S3 Object Lock 검증**<br>`GET /audit-logs` | 1. 생성/수정/삭제 이벤트가 DynamoDB `SgAuditLogs` 테이블에 기록되었는지 확인<br>2. 감사 로그 항목에 `s3Location` 경로가 올바르게 생성되었는지 확인<br>3. **AWS S3 SDK를 직접 호출하여 해당 객체의 Object Lock 상태가 `GOVERNANCE` 모드로 잠겨 있는지 검증** |
 | `E2E-BACKUP-01` | **Backup Monitor** | **EBS 스냅샷 및 볼륨 현황 조회**<br>`GET /backups/ebs` | 1. EBS 백업 관제 엔드포인트 호출<br>2. 응답 상태 코드 `200 OK`<br>3. `volumes` 및 `snapshots` 배열 스키마 정상 반환 검증 |
 | `E2E-BACKUP-02` | **Backup Monitor** | **EFS 파일 시스템 백업 현황 조회**<br>`GET /backups/efs` | 1. EFS 백업 관제 엔드포인트 호출<br>2. 응답 상태 코드 `200 OK`<br>3. `fileSystems` 배열 스키마 정상 반환 검증 |
@@ -115,11 +128,12 @@ Virtual DOM (JSDOM) 환경에서 `frontend/index.html`과 `frontend/app.js`를 �
 
 ## 4. 테스트 성공 기준 (Success Criteria)
 
-1. **프론트엔드 UI & 백엔드 단위 테스트 Pass Rate**: **100% (19/19 통과)**
-2. **실환경 E2E 통합 테스트 Pass Rate**: **100% (14/14 통과)**
-3. **전체 테스트 커버리지**: **총 33개 자동화 테스트 케이스 100% 통과**
-3. **WORM Object Lock 무결성**: 생성된 감사 로그 객체가 `GOVERNANCE` 보존 모드로 잠겨 있어 삭제/변조가 차단됨을 확인.
-4. **리소스 멱등성 및 정리**: E2E 테스트 과정에서 생성된 모든 임시 보안 그룹 및 설정이 테스트 종료 후 100% 원복/삭제되어 리소스 잔여물이 남지 않음.
+1. **프론트엔드 UI 테스트 Pass Rate**: **100% (8/8 통과)**
+2. **백엔드 로직 및 보안 단위 테스트 Pass Rate**: **100% (21/21 통과)**
+3. **실환경 E2E 통합 테스트 Pass Rate**: **100% (16/16 통과)**
+4. **전체 테스트 커버리지**: **총 45개 자동화 테스트 케이스 100% 통과**
+5. **WORM Object Lock 무결성**: 생성된 감사 로그 객체가 `GOVERNANCE` 보존 모드로 잠겨 있어 삭제/변조가 차단됨을 확인.
+6. **리소스 멱등성 및 정리**: E2E 테스트 과정에서 생성된 모든 임시 보안 그룹 및 설정이 테스트 종료 후 100% 원복/삭제되어 리소스 잔여물이 남지 않음.
 
 ---
 
@@ -140,8 +154,8 @@ jobs:
         with:
           node-version: 20
       
-      # 1. 단위 테스트 실행
-      - name: Run Unit Tests
+      # 1. 단위 테스트 및 프론트엔드 UI 테스트 실행
+      - name: Run Unit & Frontend Tests
         run: |
           npm install --prefix backend
           npm test --prefix backend

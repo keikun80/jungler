@@ -4,6 +4,7 @@
   "description": "Lambda handlers for Jungle Tools Console",
   "type": "module",
   "main": "index.js",
+  "license": "Apache-2.0",
   "scripts": {
     "test": "node --test tests/*.test.mjs"
   },
