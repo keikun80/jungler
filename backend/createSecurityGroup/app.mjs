@@ -13,14 +13,14 @@ export const handler = async (event) => {
   try {
     const ec2Client = await getEc2Client(event);
     if (!event.body) {
-      return buildResponse(400, { message: "Request body is missing" });
+      return buildResponse(400, { message: "Request body is missing" }, {}, event);
     }
 
     parsedBody = typeof event.body === "string" ? JSON.parse(event.body) : event.body;
     const { groupName, description, vpcId, name } = parsedBody;
 
     if (!groupName || !description || !vpcId) {
-      return buildResponse(400, { message: "groupName, description, and vpcId are required fields" });
+      return buildResponse(400, { message: "groupName, description, and vpcId are required fields" }, {}, event);
     }
 
     // 1. Create Security Group in AWS EC2
@@ -69,7 +69,7 @@ export const handler = async (event) => {
         vpcId,
         name: name || groupName
       }
-    });
+    }, {}, event);
 
   } catch (error) {
     console.error("Error creating security group:", error);
@@ -86,6 +86,6 @@ export const handler = async (event) => {
       event
     });
 
-    return buildResponse(500, { message: "Failed to create security group", error: error.message });
+    return buildResponse(500, { message: "Failed to create security group", error: error.message }, {}, event);
   }
 };

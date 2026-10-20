@@ -131,7 +131,7 @@ export function buildResponse(statusCode, body, customHeaders = {}, event = null
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Credentials": "true",
       "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Target-Role-Arn,X-Target-Region,Cookie",
+      "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Target-Role-Arn,X-Target-Region,X-Actor-Id,Cookie",
       ...customHeaders
     },
     body: JSON.stringify(body)

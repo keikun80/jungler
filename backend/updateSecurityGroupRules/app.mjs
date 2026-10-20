@@ -19,16 +19,16 @@ export const handler = async (event) => {
   try {
     const ec2Client = await getEc2Client(event);
     if (!sgId) {
-      return buildResponse(400, { message: "Security Group ID (id) path parameter is missing" });
+      return buildResponse(400, { message: "Security Group ID (id) path parameter is missing" }, {}, event);
     }
 
     if (!event.body) {
-      return buildResponse(400, { message: "Request body is missing" });
+      return buildResponse(400, { message: "Request body is missing" }, {}, event);
     }
 
     const { inboundRules, outboundRules } = JSON.parse(event.body);
     if (!Array.isArray(inboundRules) || !Array.isArray(outboundRules)) {
-      return buildResponse(400, { message: "inboundRules and outboundRules must be arrays" });
+      return buildResponse(400, { message: "inboundRules and outboundRules must be arrays" }, {}, event);
     }
 
     // 0. Fetch existing rules to enable full replacement & rollback
@@ -37,7 +37,7 @@ export const handler = async (event) => {
     }));
     const sg = descResult.SecurityGroups?.[0];
     if (!sg) {
-      return buildResponse(404, { message: `Security Group ${sgId} not found.` });
+      return buildResponse(404, { message: `Security Group ${sgId} not found.` }, {}, event);
     }
     const oldInbound = sg.IpPermissions || [];
     const oldOutbound = sg.IpPermissionsEgress || [];
@@ -134,7 +134,7 @@ export const handler = async (event) => {
       newInbound = mapRules(inboundRules, "인바운드");
       newOutbound = mapRules(outboundRules, "아웃바운드");
     } catch (valErr) {
-      return buildResponse(400, { message: valErr.message });
+      return buildResponse(400, { message: valErr.message }, {}, event);
     }
 
     // 3. DryRun validation: verify that all new rules are valid in AWS EC2
@@ -156,7 +156,7 @@ export const handler = async (event) => {
     } catch (dryErr) {
       if (dryErr.name !== "DryRunOperation" && !dryErr.message?.includes("DryRun flag is set") && dryErr.name !== "InvalidPermission.Duplicate") {
         console.error("DryRun authorization check failed:", dryErr);
-        return buildResponse(400, { message: `보안 그룹 규칙 검증 오류: ${dryErr.message}`, error: dryErr.message });
+        return buildResponse(400, { message: `보안 그룹 규칙 검증 오류: ${dryErr.message}`, error: dryErr.message }, {}, event);
       }
     }
 
@@ -220,7 +220,7 @@ export const handler = async (event) => {
         event
       });
 
-      return buildResponse(500, { message: `보안 그룹 규칙 적용 실패 (기존 규칙으로 복구됨): ${applyErr.message}`, error: applyErr.message });
+      return buildResponse(500, { message: `보안 그룹 규칙 적용 실패 (기존 규칙으로 복구됨): ${applyErr.message}`, error: applyErr.message }, {}, event);
     }
 
     // 5. Log SUCCESS changes to DynamoDB
@@ -240,7 +240,7 @@ export const handler = async (event) => {
       sgId,
       inboundRules: newInbound,
       outboundRules: newOutbound
-    });
+    }, {}, event);
 
   } catch (error) {
     console.error("Error updating security group rules:", error);
@@ -254,6 +254,6 @@ export const handler = async (event) => {
       event
     });
 
-    return buildResponse(500, { message: "Failed to update security group rules", error: error.message });
+    return buildResponse(500, { message: "Failed to update security group rules", error: error.message }, {}, event);
   }
 };

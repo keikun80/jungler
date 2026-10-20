@@ -10,6 +10,7 @@ import {
   extractActor
 } from '../utils.mjs';
 import { parseEniResource } from '../getSecurityGroupResources/app.mjs';
+import { fetchAllAuditLogs } from '../getAuditLogs/app.mjs';
 
 describe('1. Email Validation (RFC 5322 Standard)', () => {
   it('should accept valid standard email addresses', () => {
@@ -292,5 +293,63 @@ describe('7. Security Group Connected Resources (ENI Parser)', () => {
     assert.equal(parsed.resourceName, 'Custom appliance interface');
   });
 });
+
+describe('8. Audit Logs Pagination & Chronological Ordering', () => {
+  it('should paginate across multiple DynamoDB pages and sort items descending (newest first)', async () => {
+    // Mock DynamoDB client simulating 2 pages of scanned records
+    const page1 = {
+      Items: [
+        { sgId: 'sg-old1', timestamp: '2026-09-01T10:00:00.000Z', action: 'UPDATE_RULES', actor: 'user1' },
+        { sgId: 'sg-old2', timestamp: '2026-09-05T12:00:00.000Z', action: 'CREATE', actor: 'user2' }
+      ],
+      LastEvaluatedKey: { sgId: 'sg-old2', timestamp: '2026-09-05T12:00:00.000Z' }
+    };
+    const page2 = {
+      Items: [
+        { sgId: 'sg-new1', timestamp: '2026-10-20T02:22:05.812Z', action: 'UPDATE_RULES', actor: 'logged-in-user' },
+        { sgId: 'sg-mid1', timestamp: '2026-10-15T08:30:00.000Z', action: 'DELETE_SNAPSHOT', actor: 'system' }
+      ],
+      LastEvaluatedKey: undefined
+    };
+
+    let callCount = 0;
+    const mockClient = {
+      send: async () => {
+        callCount++;
+        return callCount === 1 ? page1 : page2;
+      }
+    };
+
+    const logs = await fetchAllAuditLogs(mockClient, 'TestAuditTable', { limit: 100 });
+    assert.equal(callCount, 2, 'Should have made 2 calls to paginate through all items');
+    assert.equal(logs.length, 4, 'Should have retrieved all 4 items across both pages');
+    assert.equal(logs[0].sgId, 'sg-new1', 'Newest item from 2026-10-20 must be first in the array');
+    assert.equal(logs[0].actor, 'logged-in-user');
+    assert.equal(logs[3].sgId, 'sg-old1', 'Oldest item from 2026-09-01 must be last');
+  });
+
+  it('should correctly filter by sgId and enforce return limit without dropping newer records', async () => {
+    const mockItems = [
+      { sgId: 'sg-target', timestamp: '2026-10-20T03:00:00.000Z', action: 'UPDATE_RULES' },
+      { sgId: 'sg-target', timestamp: '2026-10-20T01:00:00.000Z', action: 'UPDATE_RULES' },
+      { sgId: 'sg-target', timestamp: '2026-10-19T00:00:00.000Z', action: 'CREATE' }
+    ];
+
+    let lastSentCommand = null;
+    const mockClient = {
+      send: async (cmd) => {
+        lastSentCommand = cmd;
+        return { Items: mockItems, LastEvaluatedKey: undefined };
+      }
+    };
+
+    const logs = await fetchAllAuditLogs(mockClient, 'TestAuditTable', { limit: 2, sgId: 'sg-target' });
+    assert.equal(logs.length, 2, 'Should slice to requested limit of 2');
+    assert.equal(logs[0].timestamp, '2026-10-20T03:00:00.000Z', 'Top item should be the most recent');
+    assert.equal(lastSentCommand.input.FilterExpression, 'sgId = :sgId');
+    assert.equal(lastSentCommand.input.ExpressionAttributeValues[':sgId'], 'sg-target');
+  });
+});
+
 
 

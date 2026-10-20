@@ -7,20 +7,43 @@ const docClient = DynamoDBDocumentClient.from(ddbClient);
 
 const AUDIT_LOG_TABLE = process.env.AUDIT_LOG_TABLE || "SgAuditLogs";
 
+export async function fetchAllAuditLogs(client = docClient, tableName = AUDIT_LOG_TABLE, options = {}) {
+  const { limit = 100, sgId = null, maxScanItems = 2000 } = options;
+  const items = [];
+  let lastEvaluatedKey = undefined;
+
+  do {
+    const scanParams = {
+      TableName: tableName
+    };
+    if (sgId) {
+      scanParams.FilterExpression = "sgId = :sgId";
+      scanParams.ExpressionAttributeValues = { ":sgId": sgId };
+    }
+    if (lastEvaluatedKey) {
+      scanParams.ExclusiveStartKey = lastEvaluatedKey;
+    }
+
+    const result = await client.send(new ScanCommand(scanParams));
+    if (result.Items && result.Items.length > 0) {
+      items.push(...result.Items);
+    }
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey && items.length < maxScanItems);
+
+  // Sort items by timestamp descending (newest first)
+  items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  return limit ? items.slice(0, limit) : items;
+}
+
 export const handler = async (event) => {
   try {
-    // Retrieve logs from DynamoDB
-    // For a fully production system with huge volume, a GSI on action/timestamp is preferred.
-    // For this dashboard helper, a simple scan with limit/in-memory sort fits.
-    const result = await docClient.send(new ScanCommand({
-      TableName: AUDIT_LOG_TABLE,
-      Limit: 100
-    }));
+    const limitParam = parseInt(event?.queryStringParameters?.limit, 10);
+    const limit = (!isNaN(limitParam) && limitParam > 0) ? Math.min(limitParam, 500) : 100;
+    const sgId = event?.queryStringParameters?.sgId || null;
 
-    const items = result.Items || [];
-
-    // Sort items by timestamp descending (newest first)
-    items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const items = await fetchAllAuditLogs(docClient, AUDIT_LOG_TABLE, { limit, sgId });
 
     return buildResponse(200, { logs: items }, {}, event);
   } catch (error) {

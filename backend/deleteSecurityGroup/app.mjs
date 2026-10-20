@@ -13,7 +13,7 @@ export const handler = async (event) => {
   try {
     const ec2Client = await getEc2Client(event);
     if (!sgId) {
-      return buildResponse(400, { message: "Security Group ID (id) path parameter is missing" });
+      return buildResponse(400, { message: "Security Group ID (id) path parameter is missing" }, {}, event);
     }
 
     // 1. Delete Security Group in AWS EC2
@@ -31,7 +31,7 @@ export const handler = async (event) => {
     return buildResponse(200, {
       message: "Security group deleted successfully",
       sgId
-    });
+    }, {}, event);
 
   } catch (error) {
     console.error("Error deleting security group:", error);
@@ -45,6 +45,6 @@ export const handler = async (event) => {
       event
     });
 
-    return buildResponse(500, { message: "Failed to delete security group", error: error.message });
+    return buildResponse(500, { message: "Failed to delete security group", error: error.message }, {}, event);
   }
 };
