@@ -42,11 +42,15 @@ export const handler = async (event) => {
       console.warn("Error describing volumes:", err.message);
     }
 
-    // 3. Fetch active AMIs owned by this account to detect snapshots backing AMIs
+    // 3. Fetch active and disabled/deprecated AMIs owned by this account to detect snapshots backing AMIs
     const amiSnapshotMap = {};
     try {
       const imagesData = await ec2Client.send(
-        new DescribeImagesCommand({ Owners: ["self"] })
+        new DescribeImagesCommand({
+          Owners: ["self"],
+          IncludeDisabled: true,
+          IncludeDeprecated: true
+        })
       );
       (imagesData.Images || []).forEach(img => {
         (img.BlockDeviceMappings || []).forEach(bdm => {

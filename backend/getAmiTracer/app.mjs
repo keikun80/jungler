@@ -13,11 +13,15 @@ export const handler = async (event) => {
   try {
     const ec2Client = await getAwsClient(EC2Client, event);
 
-    // 1. Fetch all AMIs owned by this account
+    // 1. Fetch all AMIs owned by this account (including disabled and deprecated)
     let images = [];
     try {
       const imagesData = await ec2Client.send(
-        new DescribeImagesCommand({ Owners: ["self"] })
+        new DescribeImagesCommand({
+          Owners: ["self"],
+          IncludeDisabled: true,
+          IncludeDeprecated: true
+        })
       );
       images = imagesData.Images || [];
     } catch (err) {

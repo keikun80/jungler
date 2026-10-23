@@ -405,6 +405,39 @@ describe('Frontend UI Menu Navigation & Feature Tests (JSDOM)', () => {
     assert.ok(csvContent.includes('api-node-01'));
     assert.equal(toastType, 'success');
   });
+
+  test('11. Disabled AMI Snapshot Protection: Disabled AMI snapshots are marked as AMI In-Use and protected from deletion', () => {
+    // Call renderSnapshotTracerTable with a snapshot used by a disabled AMI
+    window.renderSnapshotTracerTable([
+      {
+        snapshotId: 'snap-05cdd081a64e6a6a4',
+        volumeId: 'vol-0b233dffb1560f181',
+        volumeExists: false,
+        volumeName: '',
+        inUseAmi: { imageId: 'ami-0673ef3815b303a03', imageName: 'ellt-b2-maven-copy', state: 'disabled' },
+        isAmiInUse: true,
+        startTime: '2025-03-28T08:10:54.617Z',
+        state: 'completed',
+        volumeSize: 50,
+        description: 'Created by CreateImage(i-074dfc0ae44d323a5) for ami-0673ef3815b303a03'
+      }
+    ]);
+
+    const tableBody = document.getElementById('table-body-snapshot-tracer');
+    assert.ok(tableBody, 'table-body-snapshot-tracer must exist');
+    const row = tableBody.querySelector('tr');
+    assert.ok(row, 'Table row must exist');
+
+    // Must NOT have a delete button
+    const deleteBtn = row.querySelector('.btn-delete-snapshot');
+    assert.equal(deleteBtn, null, 'Protected snapshot used by disabled AMI must NOT have a delete button');
+
+    // Must show AMI ID and Disabled badge
+    assert.ok(row.textContent.includes('ami-0673ef3815b303a03'));
+    assert.ok(row.textContent.includes('Disabled'));
+    assert.ok(row.textContent.includes('AMI In-Use'));
+  });
 });
+
 
 

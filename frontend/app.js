@@ -3395,17 +3395,23 @@ function renderSnapshotTracerTable(snapshots) {
       ? `<strong>${snap.volumeName}</strong>`
       : `<span style="color:var(--text-muted);">N/A (deleted)</span>`;
 
+    const isAmiDisabled = snap.isAmiInUse && snap.inUseAmi && snap.inUseAmi.state === 'disabled';
+    const disabledBadge = isAmiDisabled
+      ? `<span class="badge badge-warning" style="font-size:0.7rem; padding:1px 4px; margin-left:4px;">Disabled</span>`
+      : '';
+
     const amiText = snap.isAmiInUse && snap.inUseAmi
-      ? `<span class="code-text" style="font-size:0.75rem; color:var(--accent-cyan);" title="${snap.inUseAmi.imageName}">${snap.inUseAmi.imageId}</span>`
+      ? `<span class="code-text" style="font-size:0.75rem; color:var(--accent-cyan);" title="${snap.inUseAmi.imageName}">${snap.inUseAmi.imageId}</span>${disabledBadge}`
       : `<span style="color:var(--text-muted); font-size:0.8rem;">None</span>`;
 
     let actionsHtml = '';
     if (snap.volumeExists) {
       actionsHtml = `<span class="badge badge-healthy" title="Active source volume exists">Attached</span>`;
     } else if (snap.isAmiInUse) {
-      const amiTip = snap.inUseAmi ? `In-use by AMI ${snap.inUseAmi.imageId} (${snap.inUseAmi.imageName}). Cannot delete without deregistering AMI.` : 'In-use by AMI';
+      const stateSuffix = isAmiDisabled ? ' (Disabled)' : '';
+      const amiTip = snap.inUseAmi ? `In-use by ${snap.inUseAmi.state || 'active'} AMI ${snap.inUseAmi.imageId} (${snap.inUseAmi.imageName}). Cannot delete without deregistering AMI.` : 'In-use by AMI';
       actionsHtml = `<span class="badge badge-warning" title="${amiTip}" style="cursor:help;">
-           <i data-lucide="package" style="width:12px; height:12px; vertical-align:middle; margin-right:3px;"></i>AMI In-Use
+           <i data-lucide="package" style="width:12px; height:12px; vertical-align:middle; margin-right:3px;"></i>AMI In-Use${stateSuffix}
          </span>`;
     } else {
       actionsHtml = `<button class="btn btn-danger-outline btn-delete-snapshot"
@@ -3461,7 +3467,7 @@ async function handleDeleteSnapshot(snapshotId, volumeId, volumeSize, btnElement
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to delete snapshot');
+    if (!res.ok) throw new Error(data.error || data.message || 'Failed to delete snapshot');
 
     showToast(`Snapshot ${snapshotId} deleted successfully.`, 'success');
 
@@ -3832,14 +3838,15 @@ function exportSnapshotTracerCsv() {
 
       let amiAssociation = 'None';
       if (snap.isAmiInUse && snap.inUseAmi) {
-        amiAssociation = `${snap.inUseAmi.imageId} (${snap.inUseAmi.imageName || ''})`;
+        const disabledTag = snap.inUseAmi.state === 'disabled' ? ' [Disabled]' : '';
+        amiAssociation = `${snap.inUseAmi.imageId} (${snap.inUseAmi.imageName || ''})${disabledTag}`;
       }
 
       let status = 'Orphaned';
       if (snap.volumeExists) {
         status = 'Attached';
       } else if (snap.isAmiInUse) {
-        status = 'AMI In-Use';
+        status = snap.inUseAmi && snap.inUseAmi.state === 'disabled' ? 'AMI In-Use (Disabled)' : 'AMI In-Use';
       }
 
       const createdText = snap.startTime ? new Date(snap.startTime).toLocaleString() : 'N/A';

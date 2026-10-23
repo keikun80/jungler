@@ -29,7 +29,7 @@ export const handler = async (event) => {
     let imageName = imageId;
     try {
       const imgData = await ec2Client.send(
-        new DescribeImagesCommand({ ImageIds: [imageId] })
+        new DescribeImagesCommand({ ImageIds: [imageId], IncludeDisabled: true, IncludeDeprecated: true })
       );
       const img = imgData.Images?.[0];
       if (img) {
