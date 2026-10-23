@@ -136,7 +136,7 @@ node -e '
   const gitBranch = process.argv[5] || "";
   const gitCommit = process.argv[7] || "";
   const version = gitCommit ? `v${gitCommit}` : "";
-  const appTitle = isDev ? (gitCommit ? `Jungler(${gitBranch}@${gitCommit})` : `Jungler(${gitBranch})`) : (version ? `Jungler ${version}` : "Jungler");
+  const appTitle = version ? `Jungler ${version}` : "Jungler";
   const configObj = {
     apiEndpoint: process.argv[2],
     defaultRegion: process.argv[3],

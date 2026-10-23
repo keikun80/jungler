@@ -3252,37 +3252,21 @@ function sendTestRecipientsReport() {
     }, 1200);
 }
 
-// Dynamic Brand Title & DEV Environment Indicator (displays branch & commit ID)
+// Dynamic Brand Title & Version Indicator
 function initAppBrandTitle() {
-  const isDev = Boolean(
-    window.APP_CONFIG?.isDev ||
-    window.APP_CONFIG?.gitBranch === 'develop' ||
-    window.APP_CONFIG?.stackName === 'dev-jungle' ||
-    window.location.hostname.includes('dev-jungle')
-  );
-
-  const gitBranch = window.APP_CONFIG?.gitBranch || 'develop';
   const rawCommit = window.APP_CONFIG?.gitCommit || '';
   const gitCommit = rawCommit ? rawCommit.substring(0, 7) : '';
   const version = window.APP_CONFIG?.version || (gitCommit ? `v${gitCommit}` : '');
-  const devBadgeText = gitCommit ? `${gitBranch}@${gitCommit}` : gitBranch;
 
   const logoTitleEl = document.getElementById('app-logo-title') || document.querySelector('.sidebar-header .logo span');
   if (logoTitleEl) {
     const versionHtml = version
       ? `<span class="version-badge" title="Commit: ${gitCommit || version}">${version}</span>`
       : '';
-
-    if (isDev) {
-      logoTitleEl.innerHTML = `Jungler${versionHtml}<span class="dev-branch-badge" title="Git Branch: ${gitBranch} | Commit: ${gitCommit || 'N/A'}" style="margin-left: 6px; font-size: 0.91rem; font-weight: 700; background: #f59e0b !important; background-color: #f59e0b !important; color: #000000 !important; -webkit-text-fill-color: #000000 !important; padding: 2px 6px; border-radius: 4px; vertical-align: middle; letter-spacing: 0.3px; font-family: monospace; text-transform: none; display: inline-block;">(${devBadgeText})</span>`;
-    } else {
-      logoTitleEl.innerHTML = `Jungler${versionHtml}`;
-    }
+    logoTitleEl.innerHTML = `Jungler${versionHtml}`;
   }
 
-  if (isDev) {
-    document.title = `Jungler(${devBadgeText}) Console`;
-  } else if (version) {
+  if (version) {
     document.title = `Jungler ${version} Console`;
   } else {
     document.title = 'Jungler Console';
@@ -3793,89 +3777,109 @@ function generateCsvContent(headers, rows) {
 }
 
 function triggerCsvDownload(filename, csvContent) {
-  const blob = typeof Blob !== 'undefined'
-    ? new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    : null;
+  try {
+    const blob = typeof Blob !== 'undefined'
+      ? new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      : null;
 
-  if (typeof window !== 'undefined' && typeof window.URL !== 'undefined' && typeof window.URL.createObjectURL === 'function' && blob) {
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    if (typeof window !== 'undefined' && typeof window.URL !== 'undefined' && typeof window.URL.createObjectURL === 'function' && blob) {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        if (link.parentNode) {
+          document.body.removeChild(link);
+        }
+        window.URL.revokeObjectURL(url);
+      }, 1500);
+    }
+  } catch (err) {
+    console.error('[CSV Download Error]', err);
+    showToast(`CSV 다운로드 오류: ${err.message}`, 'error');
   }
 }
 
 function exportSnapshotTracerCsv() {
-  if (!currentSnapshotTracerList || currentSnapshotTracerList.length === 0) {
-    showToast('다운로드할 스냅샷 목록이 없습니다. 먼저 스냅샷을 조회해주세요.', 'warning');
+  try {
+    console.log('[Snapshot Tracer] exportSnapshotTracerCsv called, total items:', currentSnapshotTracerList ? currentSnapshotTracerList.length : 0);
+    if (!currentSnapshotTracerList || currentSnapshotTracerList.length === 0) {
+      console.warn('[Snapshot Tracer] currentSnapshotTracerList is empty');
+      showToast('다운로드할 스냅샷 목록이 없습니다. 먼저 스냅샷을 조회해주세요.', 'warning');
+      return null;
+    }
+
+    const headers = [
+      'Snapshot ID',
+      'Source Volume ID',
+      'Volume Name',
+      'AMI Association',
+      'Created At',
+      'State',
+      'Size (GiB)',
+      'Status',
+      'Estimated Monthly Cost ($)',
+      'Description'
+    ];
+
+    const rows = currentSnapshotTracerList.map(snap => {
+      const volumeName = snap.volumeExists
+        ? (snap.volumeName || snap.volumeId)
+        : 'N/A (deleted)';
+
+      let amiAssociation = 'None';
+      if (snap.isAmiInUse && snap.inUseAmi) {
+        amiAssociation = `${snap.inUseAmi.imageId} (${snap.inUseAmi.imageName || ''})`;
+      }
+
+      let status = 'Orphaned';
+      if (snap.volumeExists) {
+        status = 'Attached';
+      } else if (snap.isAmiInUse) {
+        status = 'AMI In-Use';
+      }
+
+      const createdText = snap.startTime ? new Date(snap.startTime).toLocaleString() : 'N/A';
+      const cost = ((snap.volumeSize || 0) * 0.05).toFixed(2);
+
+      return [
+        snap.snapshotId || '',
+        snap.volumeId || 'N/A',
+        volumeName,
+        amiAssociation,
+        createdText,
+        snap.state || 'unknown',
+        snap.volumeSize !== undefined ? snap.volumeSize : 0,
+        status,
+        cost,
+        snap.description || ''
+      ];
+    });
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `ebs-snapshot-tracer-${dateStr}.csv`;
+    const csvContent = generateCsvContent(headers, rows);
+    triggerCsvDownload(filename, csvContent);
+    showToast('Snapshot Tracer 목록이 CSV로 다운로드되었습니다.', 'success');
+    return csvContent;
+  } catch (err) {
+    console.error('[Snapshot Tracer CSV Export Error]', err);
+    showToast(`CSV 생성 오류: ${err.message}`, 'error');
     return null;
   }
-
-  const headers = [
-    'Snapshot ID',
-    'Source Volume ID',
-    'Volume Name',
-    'AMI Association',
-    'Created At',
-    'State',
-    'Size (GiB)',
-    'Status',
-    'Estimated Monthly Cost ($)',
-    'Description'
-  ];
-
-  const rows = currentSnapshotTracerList.map(snap => {
-    const volumeName = snap.volumeExists
-      ? (snap.volumeName || snap.volumeId)
-      : 'N/A (deleted)';
-
-    let amiAssociation = 'None';
-    if (snap.isAmiInUse && snap.inUseAmi) {
-      amiAssociation = `${snap.inUseAmi.imageId} (${snap.inUseAmi.imageName || ''})`;
-    }
-
-    let status = 'Orphaned';
-    if (snap.volumeExists) {
-      status = 'Attached';
-    } else if (snap.isAmiInUse) {
-      status = 'AMI In-Use';
-    }
-
-    const createdText = snap.startTime ? new Date(snap.startTime).toLocaleString() : 'N/A';
-    const cost = ((snap.volumeSize || 0) * 0.05).toFixed(2);
-
-    return [
-      snap.snapshotId || '',
-      snap.volumeId || 'N/A',
-      volumeName,
-      amiAssociation,
-      createdText,
-      snap.state || 'unknown',
-      snap.volumeSize !== undefined ? snap.volumeSize : 0,
-      status,
-      cost,
-      snap.description || ''
-    ];
-  });
-
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const filename = `ebs-snapshot-tracer-${dateStr}.csv`;
-  const csvContent = generateCsvContent(headers, rows);
-  triggerCsvDownload(filename, csvContent);
-  showToast('Snapshot Tracer 목록이 CSV로 다운로드되었습니다.', 'success');
-  return csvContent;
 }
 
 function exportAmiTracerCsv() {
-  if (!currentAmiTracerList || currentAmiTracerList.length === 0) {
-    showToast('다운로드할 AMI 목록이 없습니다. 먼저 AMI를 조회해주세요.', 'warning');
-    return null;
-  }
+  try {
+    console.log('[AMI Tracer] exportAmiTracerCsv called, total items:', currentAmiTracerList ? currentAmiTracerList.length : 0);
+    if (!currentAmiTracerList || currentAmiTracerList.length === 0) {
+      console.warn('[AMI Tracer] currentAmiTracerList is empty');
+      showToast('다운로드할 AMI 목록이 없습니다. 먼저 AMI를 조회해주세요.', 'warning');
+      return null;
+    }
 
   const headers = [
     'AMI ID',
@@ -3939,6 +3943,11 @@ function exportAmiTracerCsv() {
   triggerCsvDownload(filename, csvContent);
   showToast('AMI Tracer 목록이 CSV로 다운로드되었습니다.', 'success');
   return csvContent;
+} catch (err) {
+  console.error('[AMI Tracer CSV Export Error]', err);
+  showToast(`CSV 생성 오류: ${err.message}`, 'error');
+  return null;
+}
 }
 
 if (typeof window !== 'undefined') {
