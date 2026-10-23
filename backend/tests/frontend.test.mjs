@@ -286,5 +286,125 @@ describe('Frontend UI Menu Navigation & Feature Tests (JSDOM)', () => {
     assert.ok(!tabResources.classList.contains('active'), 'Resources tab should be inactive');
     assert.ok(!paneResources.classList.contains('active'), 'Resources pane should be inactive');
   });
+
+  test('9. Snapshot Tracer CSV Export: Button exists, handles empty and valid exports', () => {
+    const btnExport = document.getElementById('btn-export-csv-snapshot-tracer');
+    assert.ok(btnExport, 'btn-export-csv-snapshot-tracer button must exist');
+
+    let toastMsg = '';
+    let toastType = '';
+    window.showToast = (msg, type) => {
+      toastMsg = msg;
+      toastType = type;
+    };
+
+    // 1) Test empty list
+    window.setCurrentSnapshotTracerList([]);
+    const resEmpty = window.exportSnapshotTracerCsv();
+    assert.equal(resEmpty, null);
+    assert.equal(toastType, 'warning');
+    assert.ok(toastMsg.includes('다운로드할 스냅샷 목록이 없습니다'));
+
+    // 2) Test with snapshot data
+    window.setCurrentSnapshotTracerList([
+      {
+        snapshotId: 'snap-0123456789abcdef0',
+        volumeId: 'vol-abcdef01234567890',
+        volumeExists: true,
+        volumeName: 'Prod-DB-Disk',
+        isAmiInUse: false,
+        startTime: '2026-10-01T00:00:00.000Z',
+        state: 'completed',
+        volumeSize: 100,
+        description: 'Daily DB Snapshot'
+      },
+      {
+        snapshotId: 'snap-orphaned000000000',
+        volumeId: 'vol-deleted111111111',
+        volumeExists: false,
+        volumeName: '',
+        isAmiInUse: false,
+        startTime: '2026-09-01T00:00:00.000Z',
+        state: 'completed',
+        volumeSize: 50,
+        description: 'Orphan snapshot'
+      }
+    ]);
+
+    const csvContent = window.exportSnapshotTracerCsv();
+    assert.ok(csvContent, 'CSV content should be generated');
+    assert.ok(csvContent.startsWith('\uFEFF'), 'CSV must include UTF-8 BOM');
+    assert.ok(csvContent.includes('"Snapshot ID","Source Volume ID","Volume Name"'));
+    assert.ok(csvContent.includes('snap-0123456789abcdef0'));
+    assert.ok(csvContent.includes('"Attached"'));
+    assert.ok(csvContent.includes('snap-orphaned000000000'));
+    assert.ok(csvContent.includes('"Orphaned"'));
+    assert.equal(toastType, 'success');
+  });
+
+  test('10. AMI Tracer CSV Export: Button exists, handles empty and valid exports', () => {
+    const btnExport = document.getElementById('btn-export-csv-ami-tracer');
+    assert.ok(btnExport, 'btn-export-csv-ami-tracer button must exist');
+
+    let toastMsg = '';
+    let toastType = '';
+    window.showToast = (msg, type) => {
+      toastMsg = msg;
+      toastType = type;
+    };
+
+    // 1) Test empty list
+    window.setCurrentAmiTracerList([]);
+    const resEmpty = window.exportAmiTracerCsv();
+    assert.equal(resEmpty, null);
+    assert.equal(toastType, 'warning');
+    assert.ok(toastMsg.includes('다운로드할 AMI 목록이 없습니다'));
+
+    // 2) Test with AMI data
+    window.setCurrentAmiTracerList([
+      {
+        imageId: 'ami-11112222333344445',
+        name: 'web-server-v1',
+        creationDate: '2026-08-01T00:00:00.000Z',
+        ageDays: 83,
+        isUnused: true,
+        snapshotCount: 2,
+        totalSnapshotSize: 40,
+        estimatedMonthlyCost: 2.00,
+        inUseByInstances: [],
+        inUseByLaunchTemplates: [],
+        architecture: 'x86_64',
+        state: 'available',
+        description: 'Web server gold image'
+      },
+      {
+        imageId: 'ami-99998888777766665',
+        name: 'api-server-prod',
+        creationDate: '2026-10-15T00:00:00.000Z',
+        ageDays: 8,
+        isUnused: false,
+        snapshotCount: 1,
+        totalSnapshotSize: 50,
+        estimatedMonthlyCost: 2.50,
+        inUseByInstances: [{ instanceId: 'i-1234567890abcdef0', name: 'api-node-01', state: 'running' }],
+        inUseByLaunchTemplates: [{ templateId: 'lt-abcdef0123456789', templateName: 'api-lt' }],
+        architecture: 'arm64',
+        state: 'available',
+        description: 'API production image'
+      }
+    ]);
+
+    const csvContent = window.exportAmiTracerCsv();
+    assert.ok(csvContent, 'CSV content should be generated');
+    assert.ok(csvContent.startsWith('\uFEFF'), 'CSV must include UTF-8 BOM');
+    assert.ok(csvContent.includes('"AMI ID","AMI Name","Creation Date"'));
+    assert.ok(csvContent.includes('ami-11112222333344445'));
+    assert.ok(csvContent.includes('Unused (Clean Deregister Eligible)'));
+    assert.ok(csvContent.includes('ami-99998888777766665'));
+    assert.ok(csvContent.includes('In-Use Protected'));
+    assert.ok(csvContent.includes('api-node-01'));
+    assert.equal(toastType, 'success');
+  });
 });
+
 

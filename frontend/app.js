@@ -7,6 +7,8 @@ let currentOutboundRules = [];
 let sessionUser = null; // { account, arn, userId, region }
 let isSessionExpired = false;
 let currentWebhooksList = [];
+let currentSnapshotTracerList = [];
+let currentAmiTracerList = [];
 
 // RFC 5322 Email Validation Helpers
 function isValidEmail(email) {
@@ -456,12 +458,24 @@ function setupEventListeners() {
     });
   }
 
+  // Export CSV Snapshot Tracer
+  const btnExportCsvSnapshotTracer = document.getElementById('btn-export-csv-snapshot-tracer');
+  if (btnExportCsvSnapshotTracer) {
+    btnExportCsvSnapshotTracer.addEventListener('click', exportSnapshotTracerCsv);
+  }
+
   // Refresh AMI Tracer
   const btnRefreshAmiTracer = document.getElementById('btn-refresh-ami-tracer');
   if (btnRefreshAmiTracer) {
     btnRefreshAmiTracer.addEventListener('click', () => {
       if (validateEndpoint() && validateAuth()) void fetchAmiTracerData();
     });
+  }
+
+  // Export CSV AMI Tracer
+  const btnExportCsvAmiTracer = document.getElementById('btn-export-csv-ami-tracer');
+  if (btnExportCsvAmiTracer) {
+    btnExportCsvAmiTracer.addEventListener('click', exportAmiTracerCsv);
   }
 
   // Backup Service Sub-Tabs
@@ -3318,13 +3332,16 @@ async function fetchSnapshotTracerData() {
     const data = await res.json();
 
     if (data.error) {
+      currentSnapshotTracerList = [];
       if (tableBody)
         tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--accent-orange); padding: 24px;">${data.error}</td></tr>`;
     } else {
+      currentSnapshotTracerList = data.snapshots || [];
       updateSnapshotTracerMetrics(data.summary);
       renderSnapshotTracerTable(data.snapshots);
     }
   } catch (err) {
+    currentSnapshotTracerList = [];
     showToast(err.message, 'error');
     if (tableBody)
       tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--danger); padding: 24px;">Error: ${err.message}</td></tr>`;
@@ -3468,6 +3485,9 @@ async function handleDeleteSnapshot(snapshotId, volumeId, volumeSize, btnElement
     const row = btnElement.closest('tr');
     if (row) row.remove();
 
+    // Update internal snapshot list
+    currentSnapshotTracerList = currentSnapshotTracerList.filter(s => s.snapshotId !== snapshotId);
+
     // Update metrics dynamically
     const elOrphaned = document.getElementById('tracer-metric-orphaned');
     const elTotal = document.getElementById('tracer-metric-total');
@@ -3517,14 +3537,17 @@ async function fetchAmiTracerData() {
     const data = await res.json();
 
     if (!res.ok) {
+      currentAmiTracerList = [];
       throw new Error(data.error || 'Failed to fetch AMI tracer data');
     }
 
     if (data.summary) {
+      currentAmiTracerList = data.amis || [];
       updateAmiTracerMetrics(data.summary);
       renderAmiTracerTable(data.amis);
     }
   } catch (err) {
+    currentAmiTracerList = [];
     showToast(err.message, 'error');
     if (tableBody)
       tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--danger); padding: 24px;">Error: ${err.message}</td></tr>`;
@@ -3701,6 +3724,9 @@ async function handleDeregisterAmi(imageId, imageName, snapCount, snapSize, cost
     const row = btnElement.closest('tr');
     if (row) row.remove();
 
+    // Update internal AMI list
+    currentAmiTracerList = currentAmiTracerList.filter(a => a.imageId !== imageId);
+
     // Dynamically update metrics
     const elTotal = document.getElementById('ami-metric-total');
     const elTotalStorage = document.getElementById('ami-metric-total-storage');
@@ -3745,4 +3771,180 @@ async function handleDeregisterAmi(imageId, imageName, snapCount, snapSize, cost
     btnElement.innerHTML = '<i data-lucide="trash-2" style="width:14px; height:14px;"></i><span>Clean Deregister</span>';
     lucide.createIcons();
   }
+}
+
+// ==========================================
+// CSV Export Functions for Snapshot & AMI Tracer
+// ==========================================
+
+function generateCsvContent(headers, rows) {
+  const escapeCell = (val) => {
+    if (val === null || val === undefined) return '""';
+    const str = String(val);
+    return `"${str.replace(/"/g, '""')}"`;
+  };
+
+  const csvRows = [headers.map(escapeCell).join(',')];
+  rows.forEach(row => {
+    csvRows.push(row.map(escapeCell).join(','));
+  });
+
+  return '\uFEFF' + csvRows.join('\r\n');
+}
+
+function triggerCsvDownload(filename, csvContent) {
+  const blob = typeof Blob !== 'undefined'
+    ? new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    : null;
+
+  if (typeof window !== 'undefined' && typeof window.URL !== 'undefined' && typeof window.URL.createObjectURL === 'function' && blob) {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+}
+
+function exportSnapshotTracerCsv() {
+  if (!currentSnapshotTracerList || currentSnapshotTracerList.length === 0) {
+    showToast('다운로드할 스냅샷 목록이 없습니다. 먼저 스냅샷을 조회해주세요.', 'warning');
+    return null;
+  }
+
+  const headers = [
+    'Snapshot ID',
+    'Source Volume ID',
+    'Volume Name',
+    'AMI Association',
+    'Created At',
+    'State',
+    'Size (GiB)',
+    'Status',
+    'Estimated Monthly Cost ($)',
+    'Description'
+  ];
+
+  const rows = currentSnapshotTracerList.map(snap => {
+    const volumeName = snap.volumeExists
+      ? (snap.volumeName || snap.volumeId)
+      : 'N/A (deleted)';
+
+    let amiAssociation = 'None';
+    if (snap.isAmiInUse && snap.inUseAmi) {
+      amiAssociation = `${snap.inUseAmi.imageId} (${snap.inUseAmi.imageName || ''})`;
+    }
+
+    let status = 'Orphaned';
+    if (snap.volumeExists) {
+      status = 'Attached';
+    } else if (snap.isAmiInUse) {
+      status = 'AMI In-Use';
+    }
+
+    const createdText = snap.startTime ? new Date(snap.startTime).toLocaleString() : 'N/A';
+    const cost = ((snap.volumeSize || 0) * 0.05).toFixed(2);
+
+    return [
+      snap.snapshotId || '',
+      snap.volumeId || 'N/A',
+      volumeName,
+      amiAssociation,
+      createdText,
+      snap.state || 'unknown',
+      snap.volumeSize !== undefined ? snap.volumeSize : 0,
+      status,
+      cost,
+      snap.description || ''
+    ];
+  });
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const filename = `ebs-snapshot-tracer-${dateStr}.csv`;
+  const csvContent = generateCsvContent(headers, rows);
+  triggerCsvDownload(filename, csvContent);
+  showToast('Snapshot Tracer 목록이 CSV로 다운로드되었습니다.', 'success');
+  return csvContent;
+}
+
+function exportAmiTracerCsv() {
+  if (!currentAmiTracerList || currentAmiTracerList.length === 0) {
+    showToast('다운로드할 AMI 목록이 없습니다. 먼저 AMI를 조회해주세요.', 'warning');
+    return null;
+  }
+
+  const headers = [
+    'AMI ID',
+    'AMI Name',
+    'Creation Date',
+    'Age (Days)',
+    'Status',
+    'Snapshot Count',
+    'Total Snapshot Size (GiB)',
+    'Estimated Monthly Cost ($)',
+    'Active Instances',
+    'Launch Templates',
+    'Architecture',
+    'State',
+    'Description'
+  ];
+
+  const rows = currentAmiTracerList.map(ami => {
+    const createdText = ami.creationDate ? new Date(ami.creationDate).toLocaleString() : 'N/A';
+    const status = ami.isUnused ? 'Unused (Clean Deregister Eligible)' : 'In-Use Protected';
+    const snapCount = ami.snapshotCount !== undefined ? ami.snapshotCount : 0;
+    const snapSize = ami.totalSnapshotSize !== undefined ? ami.totalSnapshotSize : 0;
+    const cost = ami.estimatedMonthlyCost !== undefined
+      ? Number(ami.estimatedMonthlyCost).toFixed(2)
+      : (snapSize * 0.05).toFixed(2);
+
+    let instancesText = 'None';
+    if (ami.inUseByInstances && ami.inUseByInstances.length > 0) {
+      instancesText = ami.inUseByInstances
+        .map(i => `${i.name || i.instanceId} (${i.instanceId}, ${i.state})`)
+        .join('; ');
+    }
+
+    let ltText = 'None';
+    if (ami.inUseByLaunchTemplates && ami.inUseByLaunchTemplates.length > 0) {
+      ltText = ami.inUseByLaunchTemplates
+        .map(t => `${t.templateName || t.templateId} (${t.templateId})`)
+        .join('; ');
+    }
+
+    return [
+      ami.imageId || '',
+      ami.name || '',
+      createdText,
+      ami.ageDays !== undefined ? ami.ageDays : 0,
+      status,
+      snapCount,
+      snapSize,
+      cost,
+      instancesText,
+      ltText,
+      ami.architecture || '',
+      ami.state || '',
+      ami.description || ''
+    ];
+  });
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const filename = `ami-lifecycle-tracer-${dateStr}.csv`;
+  const csvContent = generateCsvContent(headers, rows);
+  triggerCsvDownload(filename, csvContent);
+  showToast('AMI Tracer 목록이 CSV로 다운로드되었습니다.', 'success');
+  return csvContent;
+}
+
+if (typeof window !== 'undefined') {
+  window.generateCsvContent = generateCsvContent;
+  window.exportSnapshotTracerCsv = exportSnapshotTracerCsv;
+  window.exportAmiTracerCsv = exportAmiTracerCsv;
+  window.setCurrentSnapshotTracerList = (list) => { currentSnapshotTracerList = list; };
+  window.setCurrentAmiTracerList = (list) => { currentAmiTracerList = list; };
 }

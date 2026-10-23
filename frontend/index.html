@@ -841,10 +841,16 @@
             <h2>EBS Snapshot Tracer</h2>
             <p>EBS 스냅샷과 원본 볼륨의 관계를 분석하여 고아 스냅샷(원본 볼륨 삭제됨)을 식별하고 정리합니다.</p>
           </div>
-          <button id="btn-refresh-snapshot-tracer" class="btn btn-secondary">
-            <i data-lucide="rotate-cw"></i>
-            <span>Refresh</span>
-          </button>
+          <div style="display: flex; gap: 10px;">
+            <button id="btn-export-csv-snapshot-tracer" class="btn btn-secondary" title="Export as CSV">
+              <i data-lucide="download"></i>
+              <span>Export CSV</span>
+            </button>
+            <button id="btn-refresh-snapshot-tracer" class="btn btn-secondary">
+              <i data-lucide="rotate-cw"></i>
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
         <!-- Summary Metrics -->
@@ -955,10 +961,16 @@
             <h2>AMI Lifecycle Tracer</h2>
             <p>계정 내 AMI의 인스턴스/런치 템플릿 사용 현황을 분석하고, 미사용 AMI 및 연결된 EBS 스냅샷을 원클릭(Clean Deregister)으로 안전하게 정리합니다.</p>
           </div>
-          <button id="btn-refresh-ami-tracer" class="btn btn-secondary">
-            <i data-lucide="rotate-cw"></i>
-            <span>Refresh</span>
-          </button>
+          <div style="display: flex; gap: 10px;">
+            <button id="btn-export-csv-ami-tracer" class="btn btn-secondary" title="Export as CSV">
+              <i data-lucide="download"></i>
+              <span>Export CSV</span>
+            </button>
+            <button id="btn-refresh-ami-tracer" class="btn btn-secondary">
+              <i data-lucide="rotate-cw"></i>
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
         <!-- Summary Metrics -->
